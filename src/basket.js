@@ -106,7 +106,9 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
             data:{
                 items:basket.items().map(function(it) {
                     return {id:it.id, quantity:it.quantity}
-                })
+                }),
+                billing: $scope.billing,
+                shipping: $scope.shipping
             }
         };
         ctx.success = function() {

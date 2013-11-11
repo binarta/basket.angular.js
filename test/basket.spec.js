@@ -180,36 +180,53 @@ describe('basket', function () {
                     $routeParams.locale = 'lang';
                 }));
 
-                describe('on submit', function () {
-                    beforeEach(function () {
-                        scope.submit();
+                describe('and billing and shipping addresses', function() {
+                    beforeEach(function() {
+                        scope.billing = {
+                            label: 'billing-label',
+                            addressee: 'billing-addressee'
+                        };
+                        scope.shipping = {
+                            label: 'shipping-label',
+                            addressee: 'shipping-addressee'
+                        };
                     });
 
-                    it('perform rest call', inject(function (config, basket, restServiceHandler) {
-                        expect(restServiceHandler.calls[0].args[0]).toEqual(ctx);
-                        expect(ctx.$scope).toEqual(scope);
-                        expect(ctx.params.method).toEqual('PUT');
-                        expect(ctx.params.url).toEqual(config.baseUri + 'api/entity/purchase-order');
-                        expect(ctx.params.withCredentials).toEqual(true);
-                        expect(ctx.params.headers).toEqual({"Accept-Language":'lang'});
-                        expect(ctx.params.data).toEqual({
-                            items:[
-                                {id:'sale-1', quantity:2},
-                                {id:'sale-2', quantity:1}
-                            ]
-                        });
-                    }));
-
-                    describe('success', function() {
-                        beforeEach(function() {
-                            ctx.success();
+                    describe('on submit', function () {
+                        beforeEach(function () {
+                            scope.submit();
                         });
 
-                        it('clear basket', inject(function(basket) {
-                            expect(basket.items()).toEqual([]);
+                        it('perform rest call', inject(function (config, basket, restServiceHandler) {
+                            expect(restServiceHandler.calls[0].args[0]).toEqual(ctx);
+                            expect(ctx.$scope).toEqual(scope);
+                            expect(ctx.params.method).toEqual('PUT');
+                            expect(ctx.params.url).toEqual(config.baseUri + 'api/entity/purchase-order');
+                            expect(ctx.params.withCredentials).toEqual(true);
+                            expect(ctx.params.headers).toEqual({"Accept-Language":'lang'});
+                            expect(ctx.params.data).toEqual({
+                                items:[
+                                    {id:'sale-1', quantity:2},
+                                    {id:'sale-2', quantity:1}
+                                ],
+                                billing: scope.billing,
+                                shipping: scope.shipping
+                            });
                         }));
+
+                        describe('success', function() {
+                            beforeEach(function() {
+                                ctx.success();
+                            });
+
+                            it('clear basket', inject(function(basket) {
+                                expect(basket.items()).toEqual([]);
+                            }));
+                        });
                     });
                 });
+
+
             });
         });
     });
