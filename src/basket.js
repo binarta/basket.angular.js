@@ -35,10 +35,14 @@ function LocalStorageBasketFactory(localStorage, topicMessageDispatcher) {
         }, false)
     }
 
+    function findItemById(id) {
+        return basket.reduce(function (p, c) {
+            return p || (c.id == id ? c : null)
+        }, null)
+    }
+
     function increment(it) {
-        basket.reduce(function (p, c) {
-            return p || (c.id == it.id ? c : null)
-        }, null).quantity += it.quantity;
+        findItemById(it.id).quantity += it.quantity;
     }
 
     function append(it) {
@@ -49,11 +53,30 @@ function LocalStorageBasketFactory(localStorage, topicMessageDispatcher) {
         topicMessageDispatcher.fire('basket.refresh', 'ok');
     }
 
+    function isQuantified(it) {
+        return it.quantity > 0;
+    }
+
     return new function () {
         if (isUninitialized()) initialize();
         rehydrate();
         this.add = function (it) {
-            contains(it) ? increment(it) : append(it);
+            if(isQuantified(it)) {
+                contains(it) ? increment(it) : append(it);
+                flush();
+                raiseRefreshNotification();
+            }
+        };
+        this.update = function(it) {
+            if(isQuantified(it)) {
+                findItemById(it.id).quantity = it.quantity;
+                flush();
+            }
+        };
+        this.remove = function(toRemove) {
+            basket = basket.filter(function(it) {
+                return it.id != toRemove.id;
+            });
             flush();
             raiseRefreshNotification();
         };
@@ -77,11 +100,19 @@ function LocalStorageBasketFactory(localStorage, topicMessageDispatcher) {
 
 function ViewBasketController($scope, basket, topicRegistry) {
     ['app.start', 'basket.refresh'].forEach(function (it) {
-        topicRegistry.subscribe(it, function () {
+        topicRegistry.subscribe(it, function() {
             $scope.items = basket.items();
             $scope.subTotal = basket.subTotal();
         });
     });
+
+    $scope.update = function(it) {
+        basket.update(it);
+    };
+
+    $scope.remove = function(it) {
+        basket.remove(it);
+    };
 
     $scope.clear = function () {
         basket.clear();
