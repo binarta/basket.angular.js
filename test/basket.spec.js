@@ -132,7 +132,7 @@ describe('basket', function () {
         });
     });
 
-    describe('AddToCatalogController', function () {
+    describe('AddToBasketController', function () {
         beforeEach(inject(function ($controller) {
             fixture.basket = jasmine.createSpyObj('basket', ['add']);
             ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket});
@@ -152,6 +152,29 @@ describe('basket', function () {
                     id: fixture.sale.id,
                     price: fixture.sale.price,
                     quantity: 1
+                });
+            });
+        });
+
+        describe('on submit with quantity', function () {
+            beforeEach(function () {
+                fixture.sale = {
+                    id: 'sale-id',
+                    price: 100
+                };
+                scope.init(5);
+                scope.submit(fixture.sale.id, fixture.sale.price);
+            });
+
+            it('expose quantity on scope', function() {
+                expect(scope.quantity).toEqual(5);
+            });
+
+            it('add sale to basket', function () {
+                expect(fixture.basket.add).toHaveBeenCalledWith({
+                    id: fixture.sale.id,
+                    price: fixture.sale.price,
+                    quantity: 5
                 });
             });
         });
@@ -225,9 +248,35 @@ describe('basket', function () {
                         });
                     });
                 });
-
-
             });
+        });
+    });
+
+    describe('AddToBasketModal', function() {
+        var item = 'item';
+
+        beforeEach(inject(function ($controller) {
+            ctrl = $controller(AddToBasketModal, {$scope: scope});
+        }));
+
+        describe('on submit', function() {
+            beforeEach(function() {
+                scope.submit(item);
+            });
+
+            it('expose item on scope', function() {
+                expect(scope.item).toEqual(item);
+            });
+
+            it('show modal', inject(function(modal) {
+                expect(modal.settings).toEqual({
+                    template:'partials/basket/add.html',
+                    show:true,
+                    persist:true,
+                    backdrop:'static',
+                    scope:scope
+                });
+            }));
         });
     });
 });

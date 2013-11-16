@@ -1,8 +1,9 @@
-angular.module('basket', [])
+angular.module('basket', ['$strap.directives'])
     .factory('basket', ['localStorage', 'topicMessageDispatcher', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', PlacePurchaseOrderController])
+    .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .config(['$routeProvider', function ($routeProvider) {
         $routeProvider
             .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'});
@@ -88,8 +89,14 @@ function ViewBasketController($scope, basket, topicRegistry) {
 }
 
 function AddToBasketController($scope, basket) {
+    $scope.quantity = 1;
+
+    $scope.init = function(quantity) {
+        $scope.quantity = quantity;
+    };
+
     $scope.submit = function (id, price) {
-        basket.add({id: id, price: price, quantity: 1});
+        basket.add({id: id, price: price, quantity: $scope.quantity});
     }
 }
 
@@ -115,5 +122,18 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
             basket.clear();
         };
         restServiceHandler(ctx);
+    }
+}
+
+function AddToBasketModal($scope, $modal) {
+    $scope.submit = function(it) {
+        $scope.item = it;
+        $modal({
+            template:'partials/basket/add.html',
+            show:true,
+            persist:true,
+            backdrop:'static',
+            scope:$scope
+        });
     }
 }
