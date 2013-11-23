@@ -1,18 +1,19 @@
 describe('basket', function () {
-    var fixture, ctrl, scope, dispatcher, registry;
+    var fixture, ctrl, scope, dispatcher, registry, location;
 
     beforeEach(module('basket'));
     beforeEach(module('config'));
     beforeEach(module('notifications'));
     beforeEach(module('web.storage'));
     beforeEach(module('rest.client'));
-    beforeEach(inject(function ($rootScope, $injector, config, topicMessageDispatcherMock, topicRegistryMock) {
+    beforeEach(inject(function ($rootScope, $injector, config, topicMessageDispatcherMock, topicRegistryMock, $location) {
         fixture = {};
         config.namespace = 'active-namespace';
         config.baseUri = 'http://host/context/';
         scope = $rootScope.$new();
         dispatcher = topicMessageDispatcherMock;
         registry = topicRegistryMock;
+        location = $location;
     }));
 
     describe('basket', function () {
@@ -324,12 +325,17 @@ describe('basket', function () {
 
                         describe('success', function () {
                             beforeEach(function () {
+                                scope.locale = 'locale';
                                 ctx.success();
                             });
 
                             it('clear basket', inject(function (basket) {
                                 expect(basket.items()).toEqual([]);
                             }));
+
+                            it('redirects to confirmation', function() {
+                                expect(location.path()).toEqual('/locale/order-confirmation')
+                            });
                         });
                     });
                 });

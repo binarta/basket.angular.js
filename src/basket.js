@@ -2,7 +2,7 @@ angular.module('basket', ['$strap.directives'])
     .factory('basket', ['localStorage', 'topicMessageDispatcher', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', ViewBasketController])
-    .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', PlacePurchaseOrderController])
+    .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .config(['$routeProvider', function ($routeProvider) {
         $routeProvider
@@ -131,7 +131,7 @@ function AddToBasketController($scope, basket) {
     }
 }
 
-function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler) {
+function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler, $location) {
     $scope.submit = function () {
         var ctx = usecaseAdapterFactory($scope);
         ctx.params = {
@@ -151,6 +151,7 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
         };
         ctx.success = function() {
             basket.clear();
+            $location.path($scope.locale + '/order-confirmation')
         };
         restServiceHandler(ctx);
     }
