@@ -1,5 +1,5 @@
 angular.module('basket', ['$strap.directives'])
-    .factory('basket', ['localStorage', 'topicMessageDispatcher', LocalStorageBasketFactory])
+    .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', PlacePurchaseOrderController])
@@ -9,7 +9,7 @@ angular.module('basket', ['$strap.directives'])
             .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'});
     }]);
 
-function LocalStorageBasketFactory(localStorage, topicMessageDispatcher) {
+function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher, restServiceHandler) {
     var basket;
 
     function isUninitialized() {
@@ -61,20 +61,21 @@ function LocalStorageBasketFactory(localStorage, topicMessageDispatcher) {
         if (isUninitialized()) initialize();
         rehydrate();
         this.add = function (it) {
-            if(isQuantified(it)) {
+            if (isQuantified(it)) {
                 contains(it) ? increment(it) : append(it);
                 flush();
                 raiseRefreshNotification();
             }
         };
-        this.update = function(it) {
-            if(isQuantified(it)) {
-                findItemById(it.id).quantity = it.quantity;
+        this.update = function (it) {
+            if (isQuantified(it)) {
+                findItemById(it.id).quantity = it.quantity + 0;
                 flush();
+                raiseRefreshNotification();
             }
         };
-        this.remove = function(toRemove) {
-            basket = basket.filter(function(it) {
+        this.remove = function (toRemove) {
+            basket = basket.filter(function (it) {
                 return it.id != toRemove.id;
             });
             flush();
@@ -91,6 +92,26 @@ function LocalStorageBasketFactory(localStorage, topicMessageDispatcher) {
             };
             return basket ? calculate() : 0;
         };
+        this.render = function (presenter) {
+            restServiceHandler({
+                params: {
+                    method: 'POST',
+                    url: (config.baseUri || '') + 'api/echo/purchase-order',
+                    withCredentials: true,
+                    data: {
+                        namespace: config.namespace,
+                        items: this.items().map(function (it) {
+                            return {id: it.id, quantity: it.quantity}
+                        })
+                    }
+                },
+                success: presenter
+            });
+            presenter({
+                items: this.items(),
+                subTotal: this.subTotal()
+            });
+        };
         this.clear = function () {
             initialize();
             raiseRefreshNotification();
@@ -100,17 +121,19 @@ function LocalStorageBasketFactory(localStorage, topicMessageDispatcher) {
 
 function ViewBasketController($scope, basket, topicRegistry) {
     ['app.start', 'basket.refresh'].forEach(function (it) {
-        topicRegistry.subscribe(it, function() {
-            $scope.items = basket.items();
-            $scope.subTotal = basket.subTotal();
+        topicRegistry.subscribe(it, function () {
+            basket.render(function(it) {
+                $scope.items = it.items;
+                $scope.subTotal = it.price;
+            });
         });
     });
 
-    $scope.update = function(it) {
+    $scope.update = function (it) {
         basket.update(it);
     };
 
-    $scope.remove = function(it) {
+    $scope.remove = function (it) {
         basket.remove(it);
     };
 
@@ -122,7 +145,7 @@ function ViewBasketController($scope, basket, topicRegistry) {
 function AddToBasketController($scope, basket) {
     $scope.quantity = 1;
 
-    $scope.init = function(quantity) {
+    $scope.init = function (quantity) {
         $scope.quantity = quantity;
     };
 
@@ -138,18 +161,18 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
             method: 'PUT',
             url: config.baseUri + 'api/entity/purchase-order',
             withCredentials: true,
-            headers:{
-                'Accept-Language':$routeParams.locale
+            headers: {
+                'Accept-Language': $routeParams.locale
             },
-            data:{
-                items:basket.items().map(function(it) {
-                    return {id:it.id, quantity:it.quantity}
+            data: {
+                items: basket.items().map(function (it) {
+                    return {id: it.id, quantity: it.quantity}
                 }),
                 billing: $scope.billing,
                 shipping: $scope.shipping
             }
         };
-        ctx.success = function() {
+        ctx.success = function () {
             basket.clear();
             $location.path($scope.locale + '/order-confirmation')
         };
@@ -158,14 +181,14 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
 }
 
 function AddToBasketModal($scope, $modal) {
-    $scope.submit = function(it) {
+    $scope.submit = function (it) {
         $scope.item = it;
         $modal({
-            template:'partials/basket/add.html',
-            show:true,
-            persist:true,
-            backdrop:'static',
-            scope:$scope
+            template: 'partials/basket/add.html',
+            show: true,
+            persist: true,
+            backdrop: 'static',
+            scope: $scope
         });
     }
 }

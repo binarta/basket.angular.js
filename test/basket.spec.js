@@ -18,12 +18,25 @@ describe('basket', function () {
 
     describe('basket', function () {
         describe('given a basket reference', function () {
+            var ctx;
+            var onRender = inject(function(restServiceHandler) {
+                fixture.basket.render(function(it) {
+                    fixture.order = it;
+                });
+                ctx = restServiceHandler.calls[0].args[0];
+            });
+
             beforeEach(inject(function (basket) {
                 fixture.basket = basket;
             }));
 
-            it('basket is empty', function () {
-                expect(fixture.basket.items()).toEqual([]);
+            describe('on render', function() {
+                beforeEach(onRender);
+
+                it('empty basket', function() {
+                    expect(fixture.order.items).toEqual([]);
+                    expect(fixture.order.subTotal).toEqual(0);
+                });
             });
 
             describe('when adding an item to the basket', function () {
@@ -70,6 +83,29 @@ describe('basket', function () {
                         fixture.basket.add(item2);
                     });
 
+
+                    describe('on render', function() {
+                        beforeEach(onRender);
+
+                        it('hydrate order', inject(function(config) {
+                            expect(ctx.params.method).toEqual('POST');
+                            expect(ctx.params.url).toEqual(config.baseUri + 'api/echo/purchase-order');
+                            expect(ctx.params.withCredentials).toEqual(true);
+                            expect(ctx.params.data).toEqual({
+                                namespace:config.namespace,
+                                items: [
+                                    {id: 'sale-id', quantity: 2},
+                                    {id: 'sale-id-2', quantity: 1}
+                                ]
+                            });
+                        }));
+
+                        it('render order', function() {
+                            ctx.success('payload');
+                            expect(fixture.order).toEqual('payload');
+                        });
+                    });
+
                     it('are added to the item list', function () {
                         expect(fixture.basket.items()).toEqual([item, item2]);
                     });
@@ -86,6 +122,7 @@ describe('basket', function () {
                         var updatedItem;
 
                         beforeEach(function() {
+                            dispatcher['basket.refresh'] = undefined;
                             updatedItem = {id: item.id, price: item.price, quantity: 10};
                             fixture.basket.update(updatedItem);
                         });
@@ -97,6 +134,10 @@ describe('basket', function () {
                         it('then updates are flushed', inject(function (localStorage) {
                             expect(localStorage.basket).toEqual(JSON.stringify([updatedItem, item2]));
                         }));
+
+                        it('then a basket.refresh notification is raised', function () {
+                            expect(dispatcher['basket.refresh']).toBeDefined();
+                        });
 
                         describe('to blank', function() {
                             beforeEach(function() {
@@ -176,6 +217,12 @@ describe('basket', function () {
             fixture.update = jasmine.createSpy('update');
             fixture.remove = jasmine.createSpy('remove');
             fixture.basket = {
+                render:function(presenter) {
+                    presenter({
+                        items:'items',
+                        price:'sub-total'
+                    })
+                },
                 items: function () {
                     return 'items'
                 },
