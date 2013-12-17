@@ -1,4 +1,4 @@
-angular.module('basket', ['$strap.directives'])
+angular.module('basket', ['ngRoute', '$strap.directives'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', ViewBasketController])
