@@ -65,6 +65,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                 contains(it) ? increment(it) : append(it);
                 flush();
                 raiseRefreshNotification();
+                topicMessageDispatcher.fire('basket.item.added', 'ok');
             }
         };
         this.update = function (it) {

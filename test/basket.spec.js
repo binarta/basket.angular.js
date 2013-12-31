@@ -55,6 +55,10 @@ describe('basket', function () {
                     expect(dispatcher['basket.refresh']).toBeDefined();
                 });
 
+                it('then a basket.item.added notification is raised', function () {
+                    expect(dispatcher['basket.item.added']).toBeDefined();
+                });
+
                 it('calculate sub total', function () {
                     expect(fixture.basket.subTotal()).toEqual(200);
                 });
