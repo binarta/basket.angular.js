@@ -375,17 +375,21 @@ describe('basket', function () {
                         }));
 
                         describe('success', function () {
-                            beforeEach(function () {
-                                scope.locale = 'locale';
-                                ctx.success();
-                            });
-
                             it('clear basket', inject(function (basket) {
+                                ctx.success();
                                 expect(basket.items()).toEqual([]);
                             }));
 
-                            it('redirects to confirmation', function() {
+                            it('redirects to localized confirmation when locale is known', function() {
+                                scope.locale = 'locale';
+                                ctx.success();
                                 expect(location.path()).toEqual('/locale/order-confirmation')
+                            });
+
+                            it('redirects to confirmation when locale is unknown', function() {
+                                scope.locale = undefined;
+                                ctx.success();
+                                expect(location.path()).toEqual('/order-confirmation')
                             });
                         });
                     });
