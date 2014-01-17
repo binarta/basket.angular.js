@@ -1,4 +1,3 @@
-var $routeProviderReference;
 angular.module('basket', ['ngRoute', '$strap.directives'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
@@ -6,16 +5,9 @@ angular.module('basket', ['ngRoute', '$strap.directives'])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .config(['$routeProvider', function ($routeProvider) {
-        $routeProviderReference = $routeProvider;
-    }])
-    .run(function(topicRegistry){
-        topicRegistry.subscribe('config.initialized', function (config) {
-            var version = '';
-            if(config.version) version = '?v=' + config.version;
-            $routeProviderReference
-                .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'+version});
-        });
-    });
+        $routeProvider
+            .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'});
+    }]);
 
 function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher, restServiceHandler) {
     var basket;
