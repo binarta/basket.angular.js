@@ -158,6 +158,9 @@ function AddToBasketController($scope, basket) {
 function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler, $location, addressSelection) {
     $scope.submit = function () {
         var ctx = usecaseAdapterFactory($scope);
+
+        var billing = addressSelection.view('billing');
+        var shipping = addressSelection.view('shipping');
         ctx.params = {
             method: 'PUT',
             url: config.baseUri + 'api/entity/purchase-order',
@@ -169,8 +172,14 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
                 items: basket.items().map(function (it) {
                     return {id: it.id, quantity: it.quantity}
                 }),
-                billing: addressSelection.view('billing'),
-                shipping: addressSelection.view('shipping')
+                billing: {
+                    label: billing.label || '',
+                    addressee: billing.addressee || ''
+                },
+                shipping: {
+                    label: shipping.label || '',
+                    addressee: shipping.addressee || ''
+                }
             }
         };
         ctx.success = function () {

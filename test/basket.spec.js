@@ -399,6 +399,30 @@ describe('basket', function () {
                         });
                     });
                 });
+
+                describe('and no shipping and billing address', function() {
+                    beforeEach(function () {
+                        addressSelection.view.andReturn({label: null, addressee: null});
+                        scope.submit();
+                    });
+
+                    it('address data is empty string', function() {
+                        expect(ctx.params.data).toEqual({
+                            items: [
+                                {id: 'sale-1', quantity: 2},
+                                {id: 'sale-2', quantity: 1}
+                            ],
+                            billing: {
+                                label: '',
+                                addressee: ''
+                            },
+                            shipping: {
+                                label: '',
+                                addressee: ''
+                            }
+                        });
+                    });
+                });
             });
         });
     });
