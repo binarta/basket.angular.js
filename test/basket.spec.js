@@ -319,10 +319,11 @@ describe('basket', function () {
 
     describe('PlacePurchaseOrderController', function () {
         var ctx;
+        var addressSelection = jasmine.createSpyObj('addressSelection', ['view']);
 
         beforeEach(inject(function ($controller) {
             ctx = {};
-            ctrl = $controller(PlacePurchaseOrderController, {$scope: scope, usecaseAdapterFactory: function ($scope, success) {
+            ctrl = $controller(PlacePurchaseOrderController, {addressSelection: addressSelection, $scope: scope, usecaseAdapterFactory: function ($scope, success) {
                 ctx.$scope = $scope;
                 ctx.success = success;
                 return ctx;
@@ -342,14 +343,12 @@ describe('basket', function () {
 
                 describe('and billing and shipping addresses', function () {
                     beforeEach(function () {
-                        scope.billing = {
-                            label: 'billing-label',
-                            addressee: 'billing-addressee'
-                        };
-                        scope.shipping = {
-                            label: 'shipping-label',
-                            addressee: 'shipping-addressee'
-                        };
+                        addressSelection.view.andCallFake(function(type) {
+                            return {
+                                label: type + '-label',
+                                addressee: type + '-addressee'
+                            }
+                        });
                     });
 
                     describe('on submit', function () {
@@ -369,8 +368,14 @@ describe('basket', function () {
                                     {id: 'sale-1', quantity: 2},
                                     {id: 'sale-2', quantity: 1}
                                 ],
-                                billing: scope.billing,
-                                shipping: scope.shipping
+                                billing: {
+                                    label: 'billing-label',
+                                    addressee: 'billing-addressee'
+                                },
+                                shipping: {
+                                    label: 'shipping-label',
+                                    addressee: 'shipping-addressee'
+                                }
                             });
                         }));
 

@@ -2,7 +2,7 @@ angular.module('basket', ['ngRoute', '$strap.directives'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', ViewBasketController])
-    .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', PlacePurchaseOrderController])
+    .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .config(['$routeProvider', function ($routeProvider) {
         $routeProvider
@@ -155,7 +155,7 @@ function AddToBasketController($scope, basket) {
     }
 }
 
-function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler, $location) {
+function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler, $location, addressSelection) {
     $scope.submit = function () {
         var ctx = usecaseAdapterFactory($scope);
         ctx.params = {
@@ -169,8 +169,8 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
                 items: basket.items().map(function (it) {
                     return {id: it.id, quantity: it.quantity}
                 }),
-                billing: $scope.billing,
-                shipping: $scope.shipping
+                billing: addressSelection.view('billing'),
+                shipping: addressSelection.view('shipping')
             }
         };
         ctx.success = function () {
