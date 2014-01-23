@@ -319,7 +319,7 @@ describe('basket', function () {
 
     describe('PlacePurchaseOrderController', function () {
         var ctx;
-        var addressSelection = jasmine.createSpyObj('addressSelection', ['view']);
+        var addressSelection = jasmine.createSpyObj('addressSelection', ['view', 'clear']);
 
         beforeEach(inject(function ($controller) {
             ctx = {};
@@ -395,6 +395,10 @@ describe('basket', function () {
                                 scope.locale = undefined;
                                 ctx.success();
                                 expect(location.path()).toEqual('/order-confirmation')
+                            });
+
+                            it('test', function() {
+                                expect(addressSelection.clear.mostRecentCall).toBeDefined();
                             });
                         });
                     });

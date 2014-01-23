@@ -184,7 +184,8 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
         };
         ctx.success = function () {
             basket.clear();
-            $location.path(($scope.locale ? $scope.locale : '') + '/order-confirmation')
+            $location.path(($scope.locale ? $scope.locale : '') + '/order-confirmation');
+            addressSelection.clear();
         };
         restServiceHandler(ctx);
     }
