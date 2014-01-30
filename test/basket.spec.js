@@ -267,6 +267,18 @@ describe('basket', function () {
             scope.remove('item');
             expect(fixture.remove).toHaveBeenCalledWith('item');
         });
+
+        describe('continue shopping', function() {
+            beforeEach(function() {
+                location.search('redirectTo', '/redirect-url');
+                scope.continue();
+            });
+
+            it('without locale', function() {
+                expect(location.path()).toEqual('/redirect-url');
+                expect(location.search().redirectTo).toBeUndefined();
+            });
+        });
     });
 
     describe('AddToBasketController', function () {

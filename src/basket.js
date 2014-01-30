@@ -1,7 +1,7 @@
 angular.module('basket', ['ngRoute', '$strap.directives'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
-    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', ViewBasketController])
+    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'localStorage', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .config(['$routeProvider', function ($routeProvider) {
@@ -120,7 +120,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     };
 }
 
-function ViewBasketController($scope, basket, topicRegistry) {
+function ViewBasketController($scope, basket, topicRegistry, $location, localStorage) {
     ['app.start', 'basket.refresh'].forEach(function (it) {
         topicRegistry.subscribe(it, function () {
             basket.render(function(it) {
@@ -140,7 +140,12 @@ function ViewBasketController($scope, basket, topicRegistry) {
 
     $scope.clear = function () {
         basket.clear();
-    }
+    };
+
+    $scope.continue = function() {
+        $location.path($location.search().redirectTo);
+        $location.search('redirectTo', null);
+    };
 }
 
 function AddToBasketController($scope, basket) {
