@@ -269,14 +269,63 @@ describe('basket', function () {
         });
 
         describe('continue shopping', function() {
-            beforeEach(function() {
-                location.search('redirectTo', '/redirect-url');
-                scope.continue();
+            describe('and redirectTo is in query string', function () {
+                beforeEach(function() {
+                    location.search('redirectTo', '/redirect-url');
+                });
+
+                it('without locale', function() {
+                    scope.continue();
+
+                    expect(location.path()).toEqual('/redirect-url');
+                    expect(location.search().redirectTo).toBeUndefined();
+                });
+
+                describe('and a locale', function () {
+                    beforeEach(function () {
+                        scope.locale = 'lang';
+                        scope.continue();
+                    });
+
+                    it('append locale to path', function() {
+                        expect(location.path()).toEqual('/lang/redirect-url');
+                        expect(location.search().redirectTo).toBeUndefined();
+                    });
+                });
             });
 
-            it('without locale', function() {
-                expect(location.path()).toEqual('/redirect-url');
-                expect(location.search().redirectTo).toBeUndefined();
+            describe('and redirectTo is not in query string', function () {
+                beforeEach(function() {
+                    location.search('redirectTo', null);
+                });
+
+                it('without locale', function() {
+                    scope.continue('/path');
+
+                    expect(location.path()).toEqual('/path');
+                });
+
+                describe('and a locale', function () {
+                    beforeEach(function () {
+                        scope.locale = 'lang';
+                        scope.continue('/path');
+                    });
+
+                    it('append locale to path', function() {
+                        expect(location.path()).toEqual('/lang/path');
+                    });
+                });
+            });
+
+            describe('and redirect to homepage as fallback', function () {
+                beforeEach(function() {
+                    location.search('redirectTo', null);
+                    scope.continue();
+                });
+
+                it('without locale', function() {
+                    expect(location.path()).toEqual('/');
+                });
             });
         });
     });

@@ -142,9 +142,15 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
         basket.clear();
     };
 
-    $scope.continue = function() {
-        $location.path($location.search().redirectTo);
-        $location.search('redirectTo', null);
+    $scope.continue = function(path) {
+        if($location.search().redirectTo) {
+            $location.path(($scope.locale ? $scope.locale : '') + $location.search().redirectTo);
+            $location.search('redirectTo', null);
+        } else if(path) {
+            $location.path(($scope.locale ? $scope.locale : '') + path);
+        } else {
+            $location.path('/');
+        }
     };
 }
 
