@@ -2,11 +2,13 @@ angular.module('basket', ['ngRoute', '$strap.directives'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'localStorage', ViewBasketController])
-    .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', PlacePurchaseOrderController])
+    .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', 'localStorage', '$window', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
+    .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
     .config(['$routeProvider', function ($routeProvider) {
         $routeProvider
-            .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'});
+            .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'})
+            .when('/:locale/payment-approval', {templateUrl: 'partials/shop/approval.html', controller: 'RedirectToApprovalUrlController'});
     }]);
 
 function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher, restServiceHandler) {
@@ -166,7 +168,7 @@ function AddToBasketController($scope, basket) {
     }
 }
 
-function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler, $location, addressSelection) {
+function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler, $location, addressSelection, localStorage, $window) {
     $scope.submit = function () {
         var ctx = usecaseAdapterFactory($scope);
 
@@ -180,6 +182,7 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
                 'Accept-Language': $routeParams.locale
             },
             data: {
+                provider: localStorage.provider,
                 items: basket.items().map(function (it) {
                     return {id: it.id, quantity: it.quantity}
                 }),
@@ -193,9 +196,12 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
                 }
             }
         };
-        ctx.success = function () {
+        ctx.success = function (payload) {
+            if (payload.approvalUrl) {
+                $location.search('url', payload.approvalUrl);
+                $location.path(($scope.locale || '') + '/payment-approval');
+            } else $location.path(($scope.locale || '') + '/order-confirmation');
             basket.clear();
-            $location.path(($scope.locale ? $scope.locale : '') + '/order-confirmation');
             addressSelection.clear();
         };
         restServiceHandler(ctx);
@@ -212,5 +218,11 @@ function AddToBasketModal($scope, $modal) {
             backdrop: 'static',
             scope: $scope
         });
+    }
+}
+
+function RedirectToApprovalUrlController($scope, $window, $location) {
+    $scope.init = function() {
+        $window.location = $location.search().url;
     }
 }

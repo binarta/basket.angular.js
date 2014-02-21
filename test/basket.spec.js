@@ -381,6 +381,7 @@ describe('basket', function () {
     describe('PlacePurchaseOrderController', function () {
         var ctx;
         var addressSelection = jasmine.createSpyObj('addressSelection', ['view', 'clear']);
+        var _window = {}
 
         beforeEach(inject(function ($controller) {
             ctx = {};
@@ -388,7 +389,7 @@ describe('basket', function () {
                 ctx.$scope = $scope;
                 ctx.success = success;
                 return ctx;
-            }})
+            }, $window: _window})
         }));
 
         describe('given a basket with some items', function () {
@@ -413,9 +414,10 @@ describe('basket', function () {
                     });
 
                     describe('on submit', function () {
-                        beforeEach(function () {
+                        beforeEach(inject(function (localStorage) {
+                            localStorage.provider = 'payment-provider';
                             scope.submit();
-                        });
+                        }));
 
                         it('perform rest call', inject(function (config, basket, restServiceHandler) {
                             expect(restServiceHandler.calls[0].args[0]).toEqual(ctx);
@@ -425,6 +427,7 @@ describe('basket', function () {
                             expect(ctx.params.withCredentials).toEqual(true);
                             expect(ctx.params.headers).toEqual({"Accept-Language": 'lang'});
                             expect(ctx.params.data).toEqual({
+                                provider: 'payment-provider',
                                 items: [
                                     {id: 'sale-1', quantity: 2},
                                     {id: 'sale-2', quantity: 1}
@@ -441,25 +444,35 @@ describe('basket', function () {
                         }));
 
                         describe('success', function () {
+                            beforeEach(function() {
+                                scope.locale = 'locale';
+                                ctx.success({});
+                            });
+
+                            describe('with an approval url', function() {
+                                beforeEach(function() {
+                                    ctx.success({approvalUrl: 'approval-url'});
+                                });
+
+                                it('redirect to approval url', function() {
+                                    expect(location.path()).toEqual('/locale/payment-approval');
+                                    expect(location.search().url).toEqual('approval-url');
+                                });
+
+                            });
+
+                            describe('without an approval url', function() {
+                                it('redirect to order confirmation', function() {
+                                    expect(location.path()).toEqual('/locale/order-confirmation')
+                                })
+                            });
+
                             it('clear basket', inject(function (basket) {
-                                ctx.success();
                                 expect(basket.items()).toEqual([]);
                             }));
 
-                            it('redirects to localized confirmation when locale is known', function() {
-                                scope.locale = 'locale';
-                                ctx.success();
-                                expect(location.path()).toEqual('/locale/order-confirmation')
-                            });
-
-                            it('redirects to confirmation when locale is unknown', function() {
-                                scope.locale = undefined;
-                                ctx.success();
-                                expect(location.path()).toEqual('/order-confirmation')
-                            });
-
-                            it('test', function() {
-                                expect(addressSelection.clear.mostRecentCall).toBeDefined();
+                            it('clears address selection', function() {
+                                expect(addressSelection.clear.calls[0]).toBeDefined();
                             });
                         });
                     });
@@ -518,5 +531,30 @@ describe('basket', function () {
                 });
             }));
         });
+    });
+
+    describe('RedirectToApprovalUrlController', function() {
+        var _window = {};
+        beforeEach(inject(function($controller) {
+            ctrl = $controller(RedirectToApprovalUrlController, {$scope: scope, $window: _window});
+        }));
+
+        describe('given a url to redirect to', function() {
+            beforeEach(function() {
+                location.search('url', 'approval-url');
+            });
+
+            describe('on init', function() {
+                beforeEach(function() {
+                    scope.init();
+                });
+
+                it('test', function() {
+                    expect(_window.location).toEqual('approval-url');
+                });
+            });
+        });
+
+
     });
 });
