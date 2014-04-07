@@ -127,6 +127,7 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
         topicRegistry.subscribe(it, function () {
             basket.render(function(it) {
                 $scope.items = it.items;
+                $scope.additionalCharges = it.additionalCharges;
                 $scope.subTotal = it.price;
             });
         });
