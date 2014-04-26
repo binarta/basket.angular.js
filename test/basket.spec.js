@@ -525,9 +525,7 @@ describe('basket', function () {
 
             it('show modal', inject(function (modal) {
                 expect(modal.settings).toEqual({
-                    template: 'partials/basket/add.html',
-                    show: true,
-                    persist: true,
+                    templateUrl: 'partials/basket/add.html',
                     backdrop: 'static',
                     scope: scope
                 });

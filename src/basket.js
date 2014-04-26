@@ -1,4 +1,4 @@
-angular.module('basket', ['ngRoute', '$strap.directives'])
+angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'ui.bootstrap.tpls'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'localStorage', ViewBasketController])
@@ -212,10 +212,8 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
 function AddToBasketModal($scope, $modal) {
     $scope.submit = function (it) {
         $scope.item = it;
-        $modal({
-            template: 'partials/basket/add.html',
-            show: true,
-            persist: true,
+        $modal.open({
+            templateUrl: 'partials/basket/add.html',
             backdrop: 'static',
             scope: $scope
         });
