@@ -1,4 +1,4 @@
-angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'ui.bootstrap.tpls'])
+angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
     .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'localStorage', ViewBasketController])
