@@ -125,7 +125,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
 function ViewBasketController($scope, basket, topicRegistry, $location, localStorage) {
     ['app.start', 'basket.refresh'].forEach(function (it) {
         topicRegistry.subscribe(it, function () {
-            basket.render(function(it) {
+            basket.render(function (it) {
                 $scope.items = it.items;
                 $scope.additionalCharges = it.additionalCharges;
                 $scope.subTotal = it.price;
@@ -145,11 +145,11 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
         basket.clear();
     };
 
-    $scope.continue = function(path) {
-        if($location.search().redirectTo) {
+    $scope.continue = function (path) {
+        if ($location.search().redirectTo) {
             $location.path(($scope.locale ? $scope.locale : '') + $location.search().redirectTo);
             $location.search('redirectTo', null);
-        } else if(path) {
+        } else if (path) {
             $location.path(($scope.locale ? $scope.locale : '') + path);
         } else {
             $location.path('/');
@@ -183,6 +183,7 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
                 'Accept-Language': $routeParams.locale
             },
             data: {
+                termsAndConditions: $scope.termsAndConditions,
                 provider: localStorage.provider,
                 items: basket.items().map(function (it) {
                     return {id: it.id, quantity: it.quantity}
@@ -221,7 +222,7 @@ function AddToBasketModal($scope, $modal) {
 }
 
 function RedirectToApprovalUrlController($scope, $window, $location) {
-    $scope.init = function() {
+    $scope.init = function () {
         $window.location = $location.search().url;
     }
 }

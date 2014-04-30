@@ -19,8 +19,8 @@ describe('basket', function () {
     describe('basket', function () {
         describe('given a basket reference', function () {
             var ctx;
-            var onRender = inject(function(restServiceHandler) {
-                fixture.basket.render(function(it) {
+            var onRender = inject(function (restServiceHandler) {
+                fixture.basket.render(function (it) {
                     fixture.order = it;
                 });
                 ctx = restServiceHandler.calls[0].args[0];
@@ -30,10 +30,10 @@ describe('basket', function () {
                 fixture.basket = basket;
             }));
 
-            describe('on render', function() {
+            describe('on render', function () {
                 beforeEach(onRender);
 
-                it('empty basket', function() {
+                it('empty basket', function () {
                     expect(fixture.order.items).toEqual([]);
                     expect(fixture.order.subTotal).toEqual(0);
                 });
@@ -88,15 +88,15 @@ describe('basket', function () {
                     });
 
 
-                    describe('on render', function() {
+                    describe('on render', function () {
                         beforeEach(onRender);
 
-                        it('hydrate order', inject(function(config) {
+                        it('hydrate order', inject(function (config) {
                             expect(ctx.params.method).toEqual('POST');
                             expect(ctx.params.url).toEqual(config.baseUri + 'api/echo/purchase-order');
                             expect(ctx.params.withCredentials).toEqual(true);
                             expect(ctx.params.data).toEqual({
-                                namespace:config.namespace,
+                                namespace: config.namespace,
                                 items: [
                                     {id: 'sale-id', quantity: 2},
                                     {id: 'sale-id-2', quantity: 1}
@@ -104,7 +104,7 @@ describe('basket', function () {
                             });
                         }));
 
-                        it('render order', function() {
+                        it('render order', function () {
                             ctx.success('payload');
                             expect(fixture.order).toEqual('payload');
                         });
@@ -122,16 +122,16 @@ describe('basket', function () {
                         expect(localStorage.basket).toEqual(JSON.stringify([item, item2]));
                     }));
 
-                    describe('and updating an item', function() {
+                    describe('and updating an item', function () {
                         var updatedItem;
 
-                        beforeEach(function() {
+                        beforeEach(function () {
                             dispatcher['basket.refresh'] = undefined;
                             updatedItem = {id: item.id, price: item.price, quantity: 10};
                             fixture.basket.update(updatedItem);
                         });
 
-                        it('then quantity is updated', function() {
+                        it('then quantity is updated', function () {
                             expect(fixture.basket.items()[0].quantity).toEqual(10);
                         });
 
@@ -143,31 +143,31 @@ describe('basket', function () {
                             expect(dispatcher['basket.refresh']).toBeDefined();
                         });
 
-                        describe('to blank', function() {
-                            beforeEach(function() {
+                        describe('to blank', function () {
+                            beforeEach(function () {
                                 updatedItem = {id: item.id, price: item.price, quantity: ''};
                                 fixture.basket.update(updatedItem);
                             });
 
-                            it('then quantity is unaffected', function() {
+                            it('then quantity is unaffected', function () {
                                 expect(fixture.basket.items()[0].quantity).toEqual(item.quantity);
                             });
                         });
 
-                        describe('to zero', function() {
-                            beforeEach(function() {
+                        describe('to zero', function () {
+                            beforeEach(function () {
                                 updatedItem = {id: item.id, price: item.price, quantity: 0};
                                 fixture.basket.update(updatedItem);
                             });
 
-                            it('then quantity is unaffected', function() {
+                            it('then quantity is unaffected', function () {
                                 expect(fixture.basket.items()[0].quantity).toEqual(item.quantity);
                             });
                         });
                     });
 
-                    describe('and removing an item', function() {
-                        beforeEach(function() {
+                    describe('and removing an item', function () {
+                        beforeEach(function () {
                             dispatcher['basket.refresh'] = undefined;
                             fixture.basket.remove(item);
                         });
@@ -221,11 +221,11 @@ describe('basket', function () {
             fixture.update = jasmine.createSpy('update');
             fixture.remove = jasmine.createSpy('remove');
             fixture.basket = {
-                render:function(presenter) {
+                render: function (presenter) {
                     presenter({
-                        items:'items',
-                        additionalCharges:'additional-charges',
-                        price:'sub-total'
+                        items: 'items',
+                        additionalCharges: 'additional-charges',
+                        price: 'sub-total'
                     })
                 },
                 items: function () {
@@ -270,13 +270,13 @@ describe('basket', function () {
             expect(fixture.remove).toHaveBeenCalledWith('item');
         });
 
-        describe('continue shopping', function() {
+        describe('continue shopping', function () {
             describe('and redirectTo is in query string', function () {
-                beforeEach(function() {
+                beforeEach(function () {
                     location.search('redirectTo', '/redirect-url');
                 });
 
-                it('without locale', function() {
+                it('without locale', function () {
                     scope.continue();
 
                     expect(location.path()).toEqual('/redirect-url');
@@ -289,7 +289,7 @@ describe('basket', function () {
                         scope.continue();
                     });
 
-                    it('append locale to path', function() {
+                    it('append locale to path', function () {
                         expect(location.path()).toEqual('/lang/redirect-url');
                         expect(location.search().redirectTo).toBeUndefined();
                     });
@@ -297,11 +297,11 @@ describe('basket', function () {
             });
 
             describe('and redirectTo is not in query string', function () {
-                beforeEach(function() {
+                beforeEach(function () {
                     location.search('redirectTo', null);
                 });
 
-                it('without locale', function() {
+                it('without locale', function () {
                     scope.continue('/path');
 
                     expect(location.path()).toEqual('/path');
@@ -313,19 +313,19 @@ describe('basket', function () {
                         scope.continue('/path');
                     });
 
-                    it('append locale to path', function() {
+                    it('append locale to path', function () {
                         expect(location.path()).toEqual('/lang/path');
                     });
                 });
             });
 
             describe('and redirect to homepage as fallback', function () {
-                beforeEach(function() {
+                beforeEach(function () {
                     location.search('redirectTo', null);
                     scope.continue();
                 });
 
-                it('without locale', function() {
+                it('without locale', function () {
                     expect(location.path()).toEqual('/');
                 });
             });
@@ -383,9 +383,10 @@ describe('basket', function () {
     describe('PlacePurchaseOrderController', function () {
         var ctx;
         var addressSelection = jasmine.createSpyObj('addressSelection', ['view', 'clear']);
-        var _window = {}
+        var _window = {};
 
         beforeEach(inject(function ($controller) {
+            scope.termsAndConditions = 'terms-and-conditions';
             ctx = {};
             ctrl = $controller(PlacePurchaseOrderController, {addressSelection: addressSelection, $scope: scope, usecaseAdapterFactory: function ($scope, success) {
                 ctx.$scope = $scope;
@@ -407,7 +408,7 @@ describe('basket', function () {
 
                 describe('and billing and shipping addresses', function () {
                     beforeEach(function () {
-                        addressSelection.view.andCallFake(function(type) {
+                        addressSelection.view.andCallFake(function (type) {
                             return {
                                 label: type + '-label',
                                 addressee: type + '-addressee'
@@ -429,6 +430,7 @@ describe('basket', function () {
                             expect(ctx.params.withCredentials).toEqual(true);
                             expect(ctx.params.headers).toEqual({"Accept-Language": 'lang'});
                             expect(ctx.params.data).toEqual({
+                                termsAndConditions: scope.termsAndConditions,
                                 provider: 'payment-provider',
                                 items: [
                                     {id: 'sale-1', quantity: 2},
@@ -446,25 +448,25 @@ describe('basket', function () {
                         }));
 
                         describe('success', function () {
-                            beforeEach(function() {
+                            beforeEach(function () {
                                 scope.locale = 'locale';
                                 ctx.success({});
                             });
 
-                            describe('with an approval url', function() {
-                                beforeEach(function() {
+                            describe('with an approval url', function () {
+                                beforeEach(function () {
                                     ctx.success({approvalUrl: 'approval-url'});
                                 });
 
-                                it('redirect to approval url', function() {
+                                it('redirect to approval url', function () {
                                     expect(location.path()).toEqual('/locale/payment-approval');
                                     expect(location.search().url).toEqual('approval-url');
                                 });
 
                             });
 
-                            describe('without an approval url', function() {
-                                it('redirect to order confirmation', function() {
+                            describe('without an approval url', function () {
+                                it('redirect to order confirmation', function () {
                                     expect(location.path()).toEqual('/locale/order-confirmation')
                                 })
                             });
@@ -473,21 +475,22 @@ describe('basket', function () {
                                 expect(basket.items()).toEqual([]);
                             }));
 
-                            it('clears address selection', function() {
+                            it('clears address selection', function () {
                                 expect(addressSelection.clear.calls[0]).toBeDefined();
                             });
                         });
                     });
                 });
 
-                describe('and no shipping and billing address', function() {
+                describe('and no shipping and billing address', function () {
                     beforeEach(function () {
                         addressSelection.view.andReturn({label: null, addressee: null});
                         scope.submit();
                     });
 
-                    it('address data is empty string', function() {
+                    it('address data is empty string', function () {
                         expect(ctx.params.data).toEqual({
+                            termsAndConditions: scope.termsAndConditions,
                             items: [
                                 {id: 'sale-1', quantity: 2},
                                 {id: 'sale-2', quantity: 1}
@@ -533,23 +536,23 @@ describe('basket', function () {
         });
     });
 
-    describe('RedirectToApprovalUrlController', function() {
+    describe('RedirectToApprovalUrlController', function () {
         var _window = {};
-        beforeEach(inject(function($controller) {
+        beforeEach(inject(function ($controller) {
             ctrl = $controller(RedirectToApprovalUrlController, {$scope: scope, $window: _window});
         }));
 
-        describe('given a url to redirect to', function() {
-            beforeEach(function() {
+        describe('given a url to redirect to', function () {
+            beforeEach(function () {
                 location.search('url', 'approval-url');
             });
 
-            describe('on init', function() {
-                beforeEach(function() {
+            describe('on init', function () {
+                beforeEach(function () {
                     scope.init();
                 });
 
-                it('test', function() {
+                it('test', function () {
                     expect(_window.location).toEqual('approval-url');
                 });
             });
