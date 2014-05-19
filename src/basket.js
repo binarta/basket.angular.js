@@ -8,6 +8,7 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .config(['$routeProvider', function ($routeProvider) {
         $routeProvider
             .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'})
+            .when('/payment-approval', {templateUrl: 'partials/shop/approval.html', controller: 'RedirectToApprovalUrlController'})
             .when('/:locale/payment-approval', {templateUrl: 'partials/shop/approval.html', controller: 'RedirectToApprovalUrlController'});
     }]);
 
