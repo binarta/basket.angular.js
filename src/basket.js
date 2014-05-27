@@ -109,7 +109,11 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                         })
                     }
                 },
-                success: presenter
+                success: function(payload) {
+                    basket = payload.items;
+                    flush();
+                    presenter(payload);
+                }
             });
             presenter({
                 items: this.items(),
@@ -186,6 +190,7 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
             data: {
                 termsAndConditions: $scope.termsAndConditions,
                 provider: localStorage.provider,
+                comment: $scope.comment,
                 items: basket.items().map(function (it) {
                     return {id: it.id, quantity: it.quantity}
                 }),

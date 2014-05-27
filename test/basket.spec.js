@@ -212,6 +212,20 @@ describe('basket', function () {
                     expect(fixture.basket.items()).toEqual([]);
                 });
             });
+
+            describe('when rendering removed items', function() {
+                beforeEach(inject(function() {
+                    fixture.basket.add({id:'item-1', quantity:1});
+                    fixture.basket.add({id:'item-2', quantity:1});
+                    onRender();
+                    ctx.success({items:[{id:'item-1'}]});
+                }));
+
+                it('then removed item is removed from basket and localstorage', inject(function(localStorage) {
+                    expect(fixture.basket.items()).toEqual([{id:'item-1'}]);
+                    expect(localStorage.basket).toEqual(JSON.stringify(fixture.basket.items()));
+                }));
+            });
         });
     });
 
@@ -419,6 +433,7 @@ describe('basket', function () {
                     describe('on submit', function () {
                         beforeEach(inject(function (localStorage) {
                             localStorage.provider = 'payment-provider';
+                            scope.comment = 'comment';
                             scope.submit();
                         }));
 
@@ -432,6 +447,7 @@ describe('basket', function () {
                             expect(ctx.params.data).toEqual({
                                 termsAndConditions: scope.termsAndConditions,
                                 provider: 'payment-provider',
+                                comment: 'comment',
                                 items: [
                                     {id: 'sale-1', quantity: 2},
                                     {id: 'sale-2', quantity: 1}
