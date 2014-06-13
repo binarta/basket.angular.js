@@ -1,7 +1,7 @@
 angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
-    .controller('AddToBasketController', ['$scope', 'basket', 'inStock', AddToBasketController])
-    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'localStorage', ViewBasketController])
+    .controller('AddToBasketController', ['$scope', 'basket', 'isItemInStock', 'topicMessageDispatcher', AddToBasketController])
+    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'localStorage', 'isItemInStock', 'topicMessageDispatcher', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', 'localStorage', '$window', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
@@ -130,7 +130,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     };
 }
 
-function ViewBasketController($scope, basket, topicRegistry, $location, localStorage) {
+function ViewBasketController($scope, basket, topicRegistry, $location, localStorage, isIteminStock, topicMessageDispatcher) {
     ['app.start', 'basket.refresh'].forEach(function (it) {
         topicRegistry.subscribe(it, function () {
             basket.render(function (it) {
@@ -142,25 +142,15 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
     });
 
     $scope.update = function (it) {
-//        var request = usecaseAdapterFactory($scope);
-//        request.params = {
-//            method:'POST',
-//            url: (config.baseUri || '') + 'inventory/in-stock',
-//            data: {
-//                id: it.id,
-//                quantity: it.quantity
-//            }
-//        };
-//        request.success = function() {
-//            basket.update(it);
-//        };
-//        request.error = function() {
-//            basket.rehydrate();
-//            $scope.items = basket.items();
-//            topicMessageDispatcher.fire('system.warning', {msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
-//        };
-//        restServiceHandler(request);
-        basket.update(it);
+        var success = function() {
+            basket.update(it);
+        };
+        var error = function() {
+            basket.refresh();
+            $scope.items = basket.items();
+            topicMessageDispatcher.fire('system.warning', {msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
+        };
+        isIteminStock($scope, it, success, error);
     };
 
     $scope.remove = function (it) {
@@ -183,7 +173,7 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
     };
 }
 
-function AddToBasketController($scope, basket, inStock, topicMessageDispatcher) {
+function AddToBasketController($scope, basket, isIteminStock, topicMessageDispatcher) {
     $scope.quantity = 1;
 
     $scope.init = function (quantity) {
@@ -195,15 +185,20 @@ function AddToBasketController($scope, basket, inStock, topicMessageDispatcher) 
             return $scope.quantity <= $scope.item.quantity;
         }
 
+        function updateViewAndNotifyUser() {
+            topicMessageDispatcher.fire('catalog.item.updated', id);
+            topicMessageDispatcher.fire('system.warning', {msg: 'quantity.updated', default:'The quantity for the selected item has been updated please choose a new quantity to add'})
+        }
+
         var success = function() {
             basket.add({id: id, price: price, quantity: $scope.quantity});
         };
         var error = function() {
-            if (shouldUpdateView()) topicMessageDispatcher.fire('catalog.item.updated', id);
-            topicMessageDispatcher.fire('system.warning', {msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'});
+            if (shouldUpdateView()) updateViewAndNotifyUser();
+            else topicMessageDispatcher.fire('system.warning', {msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'});
         };
         var args = {id:id, quantity:$scope.quantity || $scope.item.quantity + 1};
-        inStock(args, success, error);
+        isIteminStock($scope, args, success, error);
     }
 }
 

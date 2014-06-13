@@ -1,5 +1,6 @@
 describe('basket', function () {
     var fixture, ctrl, scope, dispatcher, registry, location;
+    var isIteminStock = jasmine.createSpy('isIteminStock');
 
     beforeEach(module('basket'));
     beforeEach(module('config'));
@@ -14,6 +15,7 @@ describe('basket', function () {
         dispatcher = topicMessageDispatcherMock;
         registry = topicRegistryMock;
         location = $location;
+        isIteminStock.reset();
     }));
 
     describe('basket', function () {
@@ -249,6 +251,7 @@ describe('basket', function () {
 
     describe('ViewBasketController', function () {
         beforeEach(inject(function ($controller) {
+            fixture.refresh = jasmine.createSpy('refresh');
             fixture.clear = jasmine.createSpy('clear');
             fixture.update = jasmine.createSpy('update');
             fixture.remove = jasmine.createSpy('remove');
@@ -268,9 +271,10 @@ describe('basket', function () {
                 },
                 clear: fixture.clear,
                 update: fixture.update,
-                remove: fixture.remove
+                remove: fixture.remove,
+                refresh: fixture.refresh
             };
-            ctrl = $controller(ViewBasketController, {$scope: scope, basket: fixture.basket});
+            ctrl = $controller(ViewBasketController, {$scope: scope, basket: fixture.basket, isIteminStock:isIteminStock});
         }));
 
         ['app.start', 'basket.refresh'].forEach(function (notification) {
@@ -292,9 +296,42 @@ describe('basket', function () {
             expect(fixture.clear).toHaveBeenCalled();
         });
 
-        it('update', function () {
-            scope.update('item');
-            expect(fixture.update).toHaveBeenCalledWith('item');
+        describe('on update', function() {
+            beforeEach(function() {
+                scope.update({id:'I', quantity:5});
+            });
+
+            it('isIteminStock is called', inject(function() {
+                expect(isIteminStock.calls[0].args[1]).toEqual({
+                    id: 'I',
+                    quantity: 5
+                })
+            }));
+
+            describe('with success', function() {
+                beforeEach(function() {
+                    isIteminStock.calls[0].args[2]();
+                });
+
+                it('then basket gets updated', function() {
+                    expect(fixture.update).toHaveBeenCalledWith({id:'I', quantity:5});
+                });
+            });
+
+            describe('with errors', function() {
+                beforeEach(function() {
+                    isIteminStock.calls[0].args[3]();
+                });
+
+                it('basket gets refreshed', function() {
+                    expect(fixture.refresh).toHaveBeenCalled();
+                    expect(scope.items).toEqual(fixture.basket.items());
+                });
+
+                it('show notification', function() {
+                    expect(dispatcher['system.warning']).toEqual({msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'});
+                })
+            });
         });
 
         it('remove', function () {
@@ -365,12 +402,11 @@ describe('basket', function () {
     });
 
     describe('AddToBasketController', function () {
-        var inStock = jasmine.createSpy('inStock');
+
 
         beforeEach(inject(function ($controller) {
-            inStock.reset();
             fixture.basket = jasmine.createSpyObj('basket', ['add']);
-            ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket, inStock:inStock});
+            ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket, isIteminStock:isIteminStock});
         }));
 
         describe('on submit', function () {
@@ -382,8 +418,8 @@ describe('basket', function () {
                 scope.submit(fixture.sale.id, fixture.sale.price);
             });
 
-            it('inStock was called with default quantity', function () {
-                expect(inStock.calls[0].args[0]).toEqual({
+            it('isIteminStock was called with default quantity', function () {
+                expect(isIteminStock.calls[0].args[1]).toEqual({
                     id: fixture.sale.id,
                     quantity: 1
                 });
@@ -398,7 +434,7 @@ describe('basket', function () {
             });
 
             it('then we fall back to the item quantity plus one', function() {
-                expect(inStock.calls[0].args[0].quantity).toEqual(6);
+                expect(isIteminStock.calls[0].args[1].quantity).toEqual(6);
             })
         });
 
@@ -412,8 +448,8 @@ describe('basket', function () {
                 scope.submit(fixture.sale.id, fixture.sale.price);
             });
 
-            it('inStock was called with default quantity', function () {
-                expect(inStock.calls[0].args[0]).toEqual({
+            it('isIteminStock was called with default quantity', function () {
+                expect(isIteminStock.calls[0].args[1]).toEqual({
                     id: fixture.sale.id,
                     quantity: 5
                 });
@@ -425,7 +461,7 @@ describe('basket', function () {
 
             describe('on success', function() {
                 beforeEach(function() {
-                    inStock.calls[0].args[1]();
+                    isIteminStock.calls[0].args[2]();
                 });
 
                 it('add sale to basket', function () {
@@ -440,24 +476,34 @@ describe('basket', function () {
             describe('on error', function() {
                 beforeEach(function() {
                     scope.item = { quantity: 5};
-                    scope.quantity = 6;
-                    inStock.calls[0].args[2]();
                 });
 
-                it('display notification', function() {
-                    expect(dispatcher['catalog.item.updated']).toBeUndefined();
-                    expect(dispatcher['system.warning']).toEqual({msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
+                describe('with item quantity and proposed quantity are invalid', function() {
+                    beforeEach(function() {
+                        scope.quantity = 6;
+                        isIteminStock.calls[0].args[3]();
+                    });
+
+                    it('display notification', function() {
+                        expect(dispatcher['catalog.item.updated']).toBeUndefined();
+                        expect(dispatcher['system.warning']).toEqual({msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
+                    });
                 });
+
 
                 describe('with item quantity and proposed quantity are valid', function() {
                     beforeEach(function() {
                         scope.quantity = 5;
-                        inStock.calls[0].args[2]();
+                        isIteminStock.calls[0].args[3]();
                     });
 
-                    it('test', inject(function() {
+                    it('catalog item gets updated', inject(function() {
                         expect(dispatcher['catalog.item.updated']).toEqual(fixture.sale.id);
                     }));
+
+                    it('and user gets notified of change', function() {
+                        expect(dispatcher['system.warning']).toEqual({msg:'quantity.updated', default:'The quantity for the selected item has been updated please choose a new quantity to add'})
+                    })
                 });
             });
         });
