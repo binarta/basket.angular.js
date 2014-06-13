@@ -63,6 +63,22 @@ describe('basket', function () {
                     expect(fixture.basket.subTotal()).toEqual(200);
                 });
 
+                describe('and we edit the quantity directly', function() {
+                    beforeEach(function() {
+                        fixture.basket.items()[0].quantity = 10;
+                    });
+
+                    describe('we can refresh to the original state', function() {
+                        beforeEach(function() {
+                            fixture.basket.refresh();
+                        });
+
+                        it('then basket has its original values', function() {
+                            expect(fixture.basket.items()).toEqual([{id:'sale-id', price: 100, quantity:2}]);
+                        })
+                    });
+                });
+
                 describe('repeatedly', function () {
                     beforeEach(function () {
                         fixture.basket.add(item);
@@ -142,6 +158,8 @@ describe('basket', function () {
                         it('then a basket.refresh notification is raised', function () {
                             expect(dispatcher['basket.refresh']).toBeDefined();
                         });
+
+
 
                         describe('to blank', function () {
                             beforeEach(function () {
@@ -347,9 +365,12 @@ describe('basket', function () {
     });
 
     describe('AddToBasketController', function () {
+        var inStock = jasmine.createSpy('inStock');
+
         beforeEach(inject(function ($controller) {
+            inStock.reset();
             fixture.basket = jasmine.createSpyObj('basket', ['add']);
-            ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket});
+            ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket, inStock:inStock});
         }));
 
         describe('on submit', function () {
@@ -361,13 +382,24 @@ describe('basket', function () {
                 scope.submit(fixture.sale.id, fixture.sale.price);
             });
 
-            it('add sale to basket', function () {
-                expect(fixture.basket.add).toHaveBeenCalledWith({
+            it('inStock was called with default quantity', function () {
+                expect(inStock.calls[0].args[0]).toEqual({
                     id: fixture.sale.id,
-                    price: fixture.sale.price,
                     quantity: 1
                 });
             });
+        });
+
+        describe('on submit with undefined quantity', function() {
+            beforeEach(function() {
+                scope.quantity = undefined;
+                scope.item = {quantity: 5};
+                scope.submit('', '');
+            });
+
+            it('then we fall back to the item quantity plus one', function() {
+                expect(inStock.calls[0].args[0].quantity).toEqual(6);
+            })
         });
 
         describe('on submit with quantity', function () {
@@ -380,15 +412,52 @@ describe('basket', function () {
                 scope.submit(fixture.sale.id, fixture.sale.price);
             });
 
+            it('inStock was called with default quantity', function () {
+                expect(inStock.calls[0].args[0]).toEqual({
+                    id: fixture.sale.id,
+                    quantity: 5
+                });
+            });
+
             it('expose quantity on scope', function () {
                 expect(scope.quantity).toEqual(5);
             });
 
-            it('add sale to basket', function () {
-                expect(fixture.basket.add).toHaveBeenCalledWith({
-                    id: fixture.sale.id,
-                    price: fixture.sale.price,
-                    quantity: 5
+            describe('on success', function() {
+                beforeEach(function() {
+                    inStock.calls[0].args[1]();
+                });
+
+                it('add sale to basket', function () {
+                    expect(fixture.basket.add).toHaveBeenCalledWith({
+                        id: fixture.sale.id,
+                        price: fixture.sale.price,
+                        quantity: 5
+                    });
+                });
+            });
+
+            describe('on error', function() {
+                beforeEach(function() {
+                    scope.item = { quantity: 5};
+                    scope.quantity = 6;
+                    inStock.calls[0].args[2]();
+                });
+
+                it('display notification', function() {
+                    expect(dispatcher['catalog.item.updated']).toBeUndefined();
+                    expect(dispatcher['system.warning']).toEqual({msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
+                });
+
+                describe('with item quantity and proposed quantity are valid', function() {
+                    beforeEach(function() {
+                        scope.quantity = 5;
+                        inStock.calls[0].args[2]();
+                    });
+
+                    it('test', inject(function() {
+                        expect(dispatcher['catalog.item.updated']).toEqual(fixture.sale.id);
+                    }));
                 });
             });
         });

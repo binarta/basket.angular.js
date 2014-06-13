@@ -1,6 +1,6 @@
 angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
-    .controller('AddToBasketController', ['$scope', 'basket', AddToBasketController])
+    .controller('AddToBasketController', ['$scope', 'basket', 'inStock', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'localStorage', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', 'localStorage', '$window', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
@@ -63,6 +63,9 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     return new function () {
         if (isUninitialized()) initialize();
         rehydrate();
+        this.refresh = function() {
+            rehydrate();
+        };
         this.add = function (it) {
             if (isQuantified(it)) {
                 contains(it) ? increment(it) : append(it);
@@ -139,6 +142,24 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
     });
 
     $scope.update = function (it) {
+//        var request = usecaseAdapterFactory($scope);
+//        request.params = {
+//            method:'POST',
+//            url: (config.baseUri || '') + 'inventory/in-stock',
+//            data: {
+//                id: it.id,
+//                quantity: it.quantity
+//            }
+//        };
+//        request.success = function() {
+//            basket.update(it);
+//        };
+//        request.error = function() {
+//            basket.rehydrate();
+//            $scope.items = basket.items();
+//            topicMessageDispatcher.fire('system.warning', {msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
+//        };
+//        restServiceHandler(request);
         basket.update(it);
     };
 
@@ -162,7 +183,7 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
     };
 }
 
-function AddToBasketController($scope, basket) {
+function AddToBasketController($scope, basket, inStock, topicMessageDispatcher) {
     $scope.quantity = 1;
 
     $scope.init = function (quantity) {
@@ -170,7 +191,19 @@ function AddToBasketController($scope, basket) {
     };
 
     $scope.submit = function (id, price) {
-        basket.add({id: id, price: price, quantity: $scope.quantity});
+        function shouldUpdateView() {
+            return $scope.quantity <= $scope.item.quantity;
+        }
+
+        var success = function() {
+            basket.add({id: id, price: price, quantity: $scope.quantity});
+        };
+        var error = function() {
+            if (shouldUpdateView()) topicMessageDispatcher.fire('catalog.item.updated', id);
+            topicMessageDispatcher.fire('system.warning', {msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'});
+        };
+        var args = {id:id, quantity:$scope.quantity || $scope.item.quantity + 1};
+        inStock(args, success, error);
     }
 }
 
