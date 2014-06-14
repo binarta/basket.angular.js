@@ -402,11 +402,16 @@ describe('basket', function () {
     });
 
     describe('AddToBasketController', function () {
-
+        var items;
 
         beforeEach(inject(function ($controller) {
-            fixture.basket = jasmine.createSpyObj('basket', ['add']);
+            items = [];
+            fixture.basket = {
+                add: jasmine.createSpy('add'),
+                items: function() {return items}
+            };
             ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket, isIteminStock:isIteminStock});
+            scope.item = {quantity:5};
         }));
 
         describe('on submit', function () {
@@ -471,6 +476,18 @@ describe('basket', function () {
                         quantity: 5
                     });
                 });
+
+                describe('and submit again', function() {
+                    beforeEach(function() {
+                        items.push({id:fixture.sale.id, quantity:5});
+                        console.log(items);
+                        scope.submit(fixture.sale.id, fixture.sale.price);
+                    });
+
+                    it('test', inject(function() {
+                        expect(isIteminStock.calls[1]).toBeUndefined();
+                    }));
+                });
             });
 
             describe('on error', function() {
@@ -486,7 +503,7 @@ describe('basket', function () {
 
                     it('display notification', function() {
                         expect(dispatcher['catalog.item.updated']).toBeUndefined();
-                        expect(dispatcher['system.warning']).toEqual({msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
+                        expect(dispatcher['system.warning']).toEqual({msg: 'item.quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
                     });
                 });
 
@@ -502,7 +519,7 @@ describe('basket', function () {
                     }));
 
                     it('and user gets notified of change', function() {
-                        expect(dispatcher['system.warning']).toEqual({msg:'quantity.updated', default:'The quantity for the selected item has been updated please choose a new quantity to add'})
+                        expect(dispatcher['system.warning']).toEqual({msg:'item.quantity.updated', default:'The quantity for the selected item has been updated please choose a new quantity to add'})
                     })
                 });
             });

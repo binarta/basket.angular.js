@@ -187,7 +187,14 @@ function AddToBasketController($scope, basket, isIteminStock, topicMessageDispat
 
         function updateViewAndNotifyUser() {
             topicMessageDispatcher.fire('catalog.item.updated', id);
-            topicMessageDispatcher.fire('system.warning', {msg: 'quantity.updated', default:'The quantity for the selected item has been updated please choose a new quantity to add'})
+            topicMessageDispatcher.fire('system.warning', {msg: 'item.quantity.updated', default:'The quantity for the selected item has been updated please choose a new quantity to add'})
+        }
+        function basketWouldOverflowForItem() {
+            return $scope.item.quantity < basketItem.quantity + $scope.quantity;
+        }
+
+        function notifyUpperboundViolation() {
+            topicMessageDispatcher.fire('system.warning', {msg: 'item.quantity.upperbound', default: 'The amount you chose to add exceeds the available amount in stock'});
         }
 
         var success = function() {
@@ -195,10 +202,14 @@ function AddToBasketController($scope, basket, isIteminStock, topicMessageDispat
         };
         var error = function() {
             if (shouldUpdateView()) updateViewAndNotifyUser();
-            else topicMessageDispatcher.fire('system.warning', {msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'});
+            else notifyUpperboundViolation();
         };
         var args = {id:id, quantity:$scope.quantity || $scope.item.quantity + 1};
-        isIteminStock($scope, args, success, error);
+        var basketItem = {quantity:0};
+        basket.items().forEach(function(it) {
+            if (it.id == id) basketItem = it;
+        });
+        basketWouldOverflowForItem() ? notifyUpperboundViolation() : isIteminStock($scope, args, success, error);
     }
 }
 
