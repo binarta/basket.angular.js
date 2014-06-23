@@ -232,7 +232,7 @@ function ViewBasketController($scope, basket, topicRegistry, $location, topicMes
                 if (!$scope.stock) $scope.stock = {};
                 $scope.stock[it.id] = extractStockFromQuantityViolationParams(violation);
                 if ($scope.stock[it.id] == 0) topicMessageDispatcher.fire('system.warning', {msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'});
-                else topicMessageDispatcher.fire('system.warning', {msg:'item.quantity.upperbound', default:'The quantity for the selected item has been updated please choose a new quantity to add'});
+                else topicMessageDispatcher.fire('system.warning', {msg:'item.quantity.upperbound', default:'You chose to add more to the basket than the stock we have available, please adjust your selection'});
             }
         });
 

@@ -547,7 +547,7 @@ describe('basket', function () {
                 });
 
                 it('notification is fired', inject(function(topicMessageDispatcherMock) {
-                    expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.quantity.upperbound', default:'The quantity for the selected item has been updated please choose a new quantity to add'});
+                    expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.quantity.upperbound', default:'You chose to add more to the basket than the stock we have available, please adjust your selection'});
                 }));
 
                 it('test', function() {
