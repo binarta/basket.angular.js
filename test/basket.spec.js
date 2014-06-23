@@ -7,6 +7,7 @@ describe('basket', function () {
     beforeEach(module('notifications'));
     beforeEach(module('web.storage'));
     beforeEach(module('rest.client'));
+    beforeEach(module('mocks'));
     beforeEach(inject(function ($rootScope, $injector, config, topicMessageDispatcherMock, topicRegistryMock, $location) {
         fixture = {};
         config.namespace = 'active-namespace';
@@ -43,181 +44,366 @@ describe('basket', function () {
 
             describe('when adding an item to the basket', function () {
                 var item;
+                var error = jasmine.createSpy('error');
+                var success = jasmine.createSpy('success');
 
                 beforeEach(function () {
                     item = {id: 'sale-id', price: 100, quantity: 2};
-                    fixture.basket.add(item);
+                    fixture.basket.add({item:item, success:success, error:error});
                 });
 
-                it('then the item is added to the item list', function () {
-                    expect(fixture.basket.items()).toEqual([item]);
-                });
-
-                it('then a basket.refresh notification is raised', function () {
-                    expect(dispatcher['basket.refresh']).toBeDefined();
-                });
-
-                it('then a basket.item.added notification is raised', function () {
-                    expect(dispatcher['basket.item.added']).toBeDefined();
-                });
-
-                it('calculate sub total', function () {
-                    expect(fixture.basket.subTotal()).toEqual(200);
-                });
-
-                describe('and we edit the quantity directly', function() {
-                    beforeEach(function() {
-                        fixture.basket.items()[0].quantity = 10;
+                it('validate the order', inject(function(validateOrder) {
+                    expect(validateOrder.calls[0].args[0]).toEqual({});
+                    expect(validateOrder.calls[0].args[1].data).toEqual({
+                        items: [
+                            {id:'sale-id', price:100, quantity:2}
+                        ]
                     });
+                }));
 
-                    describe('we can refresh to the original state', function() {
-                        beforeEach(function() {
-                            fixture.basket.refresh();
-                        });
-
-                        it('then basket has its original values', function() {
-                            expect(fixture.basket.items()).toEqual([{id:'sale-id', price: 100, quantity:2}]);
-                        })
-                    });
-                });
-
-                describe('repeatedly', function () {
-                    beforeEach(function () {
-                        fixture.basket.add(item);
-                    });
-
-                    it('causes increments', function () {
-                        expect(fixture.basket.items()).toEqual([
-                            {id: item.id, price: item.price, quantity: 4}
-                        ]);
-                    });
-
-                    it('calculate sub total', function () {
-                        expect(fixture.basket.subTotal()).toEqual(400);
-                    });
-                });
-
-                describe('and any additional items', function () {
-                    var item2;
-
-                    beforeEach(function () {
-                        item2 = {id: 'sale-id-2', price: 200, quantity: 1};
-                        fixture.basket.add(item2);
-                    });
-
-
-                    describe('on render', function () {
-                        beforeEach(onRender);
-
-                        it('hydrate order', inject(function (config) {
-                            expect(ctx.params.method).toEqual('POST');
-                            expect(ctx.params.url).toEqual(config.baseUri + 'api/echo/purchase-order');
-                            expect(ctx.params.withCredentials).toEqual(true);
-                            expect(ctx.params.data).toEqual({
-                                namespace: config.namespace,
-                                items: [
-                                    {id: 'sale-id', quantity: 2},
-                                    {id: 'sale-id-2', quantity: 1}
-                                ]
-                            });
-                        }));
-
-                        it('render order', function () {
-                            ctx.success('payload');
-                            expect(fixture.order).toEqual('payload');
-                        });
-                    });
-
-                    it('are added to the item list', function () {
-                        expect(fixture.basket.items()).toEqual([item, item2]);
-                    });
-
-                    it('calculate sub total', function () {
-                        expect(fixture.basket.subTotal()).toEqual(400);
-                    });
-
-                    it('are flushed', inject(function (localStorage) {
-                        expect(localStorage.basket).toEqual(JSON.stringify([item, item2]));
+                describe('on succesful validation', function() {
+                    beforeEach(inject(function(validateOrder) {
+                        validateOrder.calls[0].args[1].success();
                     }));
 
-                    describe('and updating an item', function () {
-                        var updatedItem;
+                    it('then the item is added to the item list', function () {
+                        expect(fixture.basket.items()).toEqual([item]);
+                    });
 
+                    it('then a basket.refresh notification is raised', function () {
+                        expect(dispatcher['basket.refresh']).toBeDefined();
+                    });
+
+                    it('then a basket.item.added notification is raised', function () {
+                        expect(dispatcher['basket.item.added']).toBeDefined();
+                    });
+
+                    it('calculate sub total', function () {
+                        expect(fixture.basket.subTotal()).toEqual(200);
+                    });
+
+                    it('success callback has been called', function() {
+                        expect(success.calls[0]).toBeDefined();
+                    });
+
+                    describe('repeatedly', function () {
                         beforeEach(function () {
-                            dispatcher['basket.refresh'] = undefined;
-                            updatedItem = {id: item.id, price: item.price, quantity: 10};
-                            fixture.basket.update(updatedItem);
+                            fixture.basket.add({item:item});
                         });
 
-                        it('then quantity is updated', function () {
-                            expect(fixture.basket.items()[0].quantity).toEqual(10);
+                        describe('with success', function() {
+                            beforeEach(inject(function(validateOrder) {
+                                validateOrder.calls[1].args[1].success();
+                            }));
+
+                            it('causes increments', function () {
+                                expect(fixture.basket.items()).toEqual([
+                                    {id: item.id, price: item.price, quantity: 4}
+                                ]);
+                            });
+
+                            it('calculate sub total', function () {
+                                expect(fixture.basket.subTotal()).toEqual(400);
+                            });
                         });
 
-                        it('then updates are flushed', inject(function (localStorage) {
-                            expect(localStorage.basket).toEqual(JSON.stringify([updatedItem, item2]));
+                        describe('with rejection', function() {
+                            beforeEach(inject(function(validateOrder) {
+                                validateOrder.calls[1].args[0].violations = {
+                                    items:{}
+                                };
+                                validateOrder.calls[1].args[0].violations.items[item.id] = {quantity:[{label:'upperbound', params:{boundary:0}}]};
+                                validateOrder.calls[1].args[1].error();
+                            }));
+
+                            it('test', inject(function() {
+                                expect(fixture.basket.items()).toEqual([
+                                    {id:item.id, price:item.price, quantity:2}
+                                ])
+                            }));
+                        });
+                    });
+
+                    describe('and any additional items', function () {
+                        var item2;
+
+                        beforeEach(inject(function(validateOrder) {
+                            item2 = {id: 'sale-id-2', price: 200, quantity: 1};
+                            fixture.basket.add({item:item2, success:success, error:error});
+                            validateOrder.calls[1].args[1].success();
                         }));
 
-                        it('then a basket.refresh notification is raised', function () {
-                            expect(dispatcher['basket.refresh']).toBeDefined();
-                        });
 
+                        describe('on render', function () {
+                            beforeEach(onRender);
 
+                            it('hydrate order', inject(function (config) {
+                                expect(ctx.params.method).toEqual('POST');
+                                expect(ctx.params.url).toEqual(config.baseUri + 'api/echo/purchase-order');
+                                expect(ctx.params.withCredentials).toEqual(true);
+                                expect(ctx.params.data).toEqual({
+                                    namespace: config.namespace,
+                                    items: [
+                                        {id: 'sale-id', quantity: 2},
+                                        {id: 'sale-id-2', quantity: 1}
+                                    ]
+                                });
+                            }));
 
-                        describe('to blank', function () {
-                            beforeEach(function () {
-                                updatedItem = {id: item.id, price: item.price, quantity: ''};
-                                fixture.basket.update(updatedItem);
-                            });
-
-                            it('then quantity is unaffected', function () {
-                                expect(fixture.basket.items()[0].quantity).toEqual(item.quantity);
-                            });
-                        });
-
-                        describe('to zero', function () {
-                            beforeEach(function () {
-                                updatedItem = {id: item.id, price: item.price, quantity: 0};
-                                fixture.basket.update(updatedItem);
-                            });
-
-                            it('then quantity is unaffected', function () {
-                                expect(fixture.basket.items()[0].quantity).toEqual(item.quantity);
+                            it('render order', function () {
+                                ctx.success('payload');
+                                expect(fixture.order).toEqual('payload');
                             });
                         });
-                    });
 
-                    describe('and removing an item', function () {
-                        beforeEach(function () {
-                            dispatcher['basket.refresh'] = undefined;
-                            fixture.basket.remove(item);
+                        it('are added to the item list', function () {
+                            expect(fixture.basket.items()).toEqual([item, item2]);
                         });
 
-                        it('then removals are flushed', inject(function (localStorage) {
-                            expect(localStorage.basket).toEqual(JSON.stringify([item2]));
+                        it('calculate sub total', function () {
+                            expect(fixture.basket.subTotal()).toEqual(400);
+                        });
+
+                        it('are flushed', inject(function (localStorage) {
+                            expect(localStorage.basket).toEqual(JSON.stringify([item, item2]));
                         }));
 
+                        describe('and updating an item', function () {
+                            var updatedItem;
+
+                            function resetSpies(spies) {
+                                spies.forEach(function(it){it.reset()});
+                            }
+
+                            beforeEach(inject(function(validateOrder) {
+                                resetSpies([success, error, validateOrder]);
+                                dispatcher['basket.refresh'] = undefined;
+                                updatedItem = {id: item.id, price: item.price, quantity: 10};
+                                fixture.basket.update({item:updatedItem});
+                            }));
+
+                            it('then validate the order', inject(function(validateOrder) {
+                                expect(validateOrder.calls[0].args[0]).toEqual({});
+                                expect(validateOrder.calls[0].args[1].data).toEqual({items:fixture.basket.items()})
+                            }));
+
+                            it('with the updated quantity', inject(function(validateOrder) {
+                                expect(validateOrder.calls[0].args[1].data.items[0]).toEqual(updatedItem);
+                            }));
+
+                            describe('with success', function() {
+                                beforeEach(inject(function(validateOrder) {
+                                    validateOrder.calls[0].args[1].success();
+                                }));
+
+                                it('then quantity is updated', function () {
+                                    expect(fixture.basket.items()[0].quantity).toEqual(10);
+                                });
+
+                                it('then updates are flushed', inject(function (localStorage) {
+                                    expect(localStorage.basket).toEqual(JSON.stringify([updatedItem, item2]));
+                                }));
+
+                                it('then a basket.refresh notification is raised', function () {
+                                    expect(dispatcher['basket.refresh']).toBeDefined();
+                                });
+
+                                describe('with success callback', function() {
+                                    beforeEach(inject(function(validateOrder) {
+                                        resetSpies([success, error, validateOrder]);
+                                        dispatcher['basket.refresh'] = undefined;
+                                        updatedItem = {id: item.id, price: item.price, quantity: 10};
+                                        fixture.basket.update({item:updatedItem, success:success});
+                                        validateOrder.calls[0].args[1].success();
+                                    }));
+
+                                    it('success has been called', function() {
+                                        expect(success.calls[0]).toBeDefined();
+                                    });
+                                });
+
+                                describe('to blank', function () {
+                                    beforeEach(function () {
+                                        updatedItem = {id: item.id, price: item.price, quantity: ''};
+                                        fixture.basket.update({item:updatedItem});
+                                    });
+
+                                    it('then quantity is unaffected', function () {
+                                        expect(fixture.basket.items()[0].quantity).toEqual(10);
+                                    });
+                                });
+
+                                describe('to zero', function () {
+                                    beforeEach(function () {
+                                        updatedItem = {id: item.id, price: item.price, quantity: 0};
+                                        fixture.basket.update({item:updatedItem});
+                                    });
+
+                                    it('then quantity is unaffected', function () {
+                                        expect(fixture.basket.items()[0].quantity).toEqual(10);
+                                    });
+                                });
+                            });
+
+                            describe('with rejection', function() {
+                                beforeEach(inject(function(validateOrder) {
+                                    validateOrder.calls[0].args[0].violations = {
+                                        items: {
+                                            'sale-id': {
+                                                quantity:[{label:'upperbound', params:{boundary:0}}]
+                                            }
+                                        }
+                                    };
+                                    validateOrder.calls[0].args[1].error();
+                                }));
+
+                                it('original values are retained', function() {
+                                    expect(fixture.basket.items()[0].quantity).toEqual(item.quantity);
+                                });
+
+                                describe('for different item', function() {
+                                    beforeEach(inject(function(validateOrder) {
+                                        validateOrder.reset();
+                                        dispatcher['basket.refresh'] = undefined;
+                                        updatedItem = {id: item.id, price: item.price, quantity: 10};
+                                        fixture.basket.update({item:updatedItem});
+                                        validateOrder.calls[0].args[0].violations = {
+                                            items: {
+                                                'sale-id-2': {
+                                                    quantity:[{label:'upperbound', params:{boundary:0}}]
+                                                }
+                                            }
+                                        };
+                                        validateOrder.calls[0].args[1].error();
+                                    }));
+
+                                    it('then quantity is updated', function () {
+                                        expect(fixture.basket.items()[0].quantity).toEqual(10);
+                                    });
+
+                                    it('then updates are flushed', inject(function (localStorage) {
+                                        expect(localStorage.basket).toEqual(JSON.stringify([updatedItem, item2]));
+                                    }));
+
+                                    it('then a basket.refresh notification is raised', function () {
+                                        expect(dispatcher['basket.refresh']).toBeDefined();
+                                    });
+                                });
+
+                                describe('with rejection callback', function() {
+                                    beforeEach(inject(function(validateOrder) {
+                                        resetSpies([success, error, validateOrder]);
+                                        dispatcher['basket.refresh'] = undefined;
+                                        updatedItem = {id: item.id, price: item.price, quantity: 10};
+                                        fixture.basket.update({item:updatedItem, error:error});
+                                        validateOrder.calls[0].args[0].violations = {
+                                            items: {
+                                                'sale-id': {
+                                                    quantity:[{label:'upperbound', params:{boundary:0}}]
+                                                }
+                                            }
+                                        };
+                                        validateOrder.calls[0].args[1].error();
+                                    }));
+
+                                    it('then callback is executed', function() {
+                                        expect(error.calls[0].args[0]).toEqual({
+                                            quantity:[{label:'upperbound', params:{boundary:0}}]
+                                        });
+                                    })
+                                });
+
+                            });
+                        });
+
+                        describe('and removing an item', function () {
+                            beforeEach(function () {
+                                dispatcher['basket.refresh'] = undefined;
+                                fixture.basket.remove(item);
+                            });
+
+                            it('then removals are flushed', inject(function (localStorage) {
+                                expect(localStorage.basket).toEqual(JSON.stringify([item2]));
+                            }));
+
+                            it('then a basket.refresh notification is raised', function () {
+                                expect(dispatcher['basket.refresh']).toBeDefined();
+                            });
+                        });
+
+                        describe('and clearing the basket', function () {
+                            beforeEach(function () {
+                                dispatcher['basket.refresh'] = undefined;
+                                fixture.basket.clear();
+                            });
+
+                            it('then contents reset', function () {
+                                expect(fixture.basket.items()).toEqual([]);
+                                expect(fixture.basket.subTotal()).toEqual(0);
+                            });
+
+                            it('then a basket.refresh notification is raised', function () {
+                                expect(dispatcher['basket.refresh']).toBeDefined();
+                            });
+                        });
+
+                    })
+
+                });
+
+                describe('on rejection', function() {
+                    beforeEach(inject(function(validateOrder) {
+                        error.reset();
+                        validateOrder.calls[0].args[0].violations = {items:{}};
+                        validateOrder.calls[0].args[0].violations.items[item.id] = {quantity:{label:'upperbound', params:{boundary:0}}};
+                        validateOrder.calls[0].args[1].error();
+                    }));
+
+                    it('the basket remains empty', function() {
+                        expect(fixture.basket.items()).toEqual([]);
+                    });
+
+                    it('error callback is executed', function() {
+                        expect(error.calls[0].args[0]).toEqual({quantity:{label:'upperbound', params:{boundary:0}}});
+                    });
+
+                    describe('for different item', function() {
+                        beforeEach(inject(function(validateOrder) {
+                            fixture.basket.add({item:item, success:success, error:error});
+                            error.reset();
+                            validateOrder.calls[0].args[0].violations = {
+                                items:{
+                                    'id-2':{quantity:[{label:'upperbound', params:{boundary:0}}]}
+                                }
+                            };
+                            validateOrder.calls[0].args[1].error();
+                        }));
+
+                        it('error callback is not called', function() {
+                            expect(error.calls[0]).toBeUndefined();
+                        });
+
+                        it('then the item is added to the item list', function () {
+                            expect(fixture.basket.items()).toEqual([item]);
+                        });
+
                         it('then a basket.refresh notification is raised', function () {
                             expect(dispatcher['basket.refresh']).toBeDefined();
                         });
-                    });
 
-                    describe('and clearing the basket', function () {
-                        beforeEach(function () {
-                            dispatcher['basket.refresh'] = undefined;
-                            fixture.basket.clear();
+                        it('then a basket.item.added notification is raised', function () {
+                            expect(dispatcher['basket.item.added']).toBeDefined();
                         });
 
-                        it('then contents reset', function () {
-                            expect(fixture.basket.items()).toEqual([]);
-                            expect(fixture.basket.subTotal()).toEqual(0);
+                        it('calculate sub total', function () {
+                            expect(fixture.basket.subTotal()).toEqual(200);
                         });
 
-                        it('then a basket.refresh notification is raised', function () {
-                            expect(dispatcher['basket.refresh']).toBeDefined();
+                        it('success callback has been called', function() {
+                            expect(success.calls[0]).toBeDefined();
                         });
                     });
-
-                })
+                });
             });
 
             describe('when adding an item to the basket for 0 quantity', function () {
@@ -225,7 +411,7 @@ describe('basket', function () {
 
                 beforeEach(function () {
                     item = {id: 'sale-id', price: 100, quantity: 0};
-                    fixture.basket.add(item);
+                    fixture.basket.add({item:item});
                 });
 
                 it('then the item is added to the item list', function () {
@@ -235,8 +421,8 @@ describe('basket', function () {
 
             describe('when rendering removed items', function() {
                 beforeEach(inject(function() {
-                    fixture.basket.add({id:'item-1', quantity:1});
-                    fixture.basket.add({id:'item-2', quantity:1});
+                    fixture.basket.add({item:{id:'item-1', quantity:1}});
+                    fixture.basket.add({item:{id:'item-2', quantity:1}});
                     onRender();
                     ctx.success({items:[{id:'item-1'}]});
                 }));
@@ -291,6 +477,44 @@ describe('basket', function () {
             });
         });
 
+        describe('on init', function() {
+            describe('with order validation enabled', function() {
+                beforeEach(function() {
+                    scope.init({validateOrder:true});
+                });
+
+                it('scope is passed to order validation', inject(function(validateOrder) {
+                    expect(validateOrder.calls[0].args[0]).toEqual(scope);
+                }));
+
+                it('basket items are passed along', inject(function(validateOrder) {
+                    expect(validateOrder.calls[0].args[1].data).toEqual({
+                        items: fixture.basket.items()
+                    })
+                }));
+
+                describe('with error', function() {
+                    beforeEach(inject(function(validateOrder) {
+                        scope.violations = {
+                            items: {
+                                'id-1': {
+                                    quantity:[{label:'upperbound', params:{boundary:1}}]
+                                },
+                                'id-2': {
+                                    quantity:[{label:'upperbound', params:{boundary:2}}]
+                                }
+                            }
+                        };
+                        validateOrder.calls[0].args[1].error();
+                    }));
+
+                    it('boundaries are extracted from violations and put on the scope', function() {
+                        expect(scope.stock).toEqual({'id-1':1, 'id-2':2})
+                    })
+                });
+            });
+        });
+
         it('clear basket', function () {
             scope.clear();
             expect(fixture.clear).toHaveBeenCalled();
@@ -301,36 +525,36 @@ describe('basket', function () {
                 scope.update({id:'I', quantity:5});
             });
 
-            it('isIteminStock is called', inject(function() {
-                expect(isIteminStock.calls[0].args[1]).toEqual({
-                    id: 'I',
-                    quantity: 5
-                })
-            }));
-
-            describe('with success', function() {
-                beforeEach(function() {
-                    isIteminStock.calls[0].args[2]();
-                });
-
-                it('then basket gets updated', function() {
-                    expect(fixture.update).toHaveBeenCalledWith({id:'I', quantity:5});
-                });
+            it('update for item was called', function() {
+                expect(fixture.update.calls[0].args[0].item).toEqual({id:'I', quantity:5});
             });
 
-            describe('with errors', function() {
+            describe('on error', function() {
                 beforeEach(function() {
-                    isIteminStock.calls[0].args[3]();
+                    fixture.update.calls[0].args[0].error({quantity:[
+                        {label:'upperbound', params:{boundary:1}}
+                    ]});
                 });
 
-                it('basket gets refreshed', function() {
-                    expect(fixture.refresh).toHaveBeenCalled();
-                    expect(scope.items).toEqual(fixture.basket.items());
+                it('stock is exposed on scope', function() {
+                    expect(scope.stock.I).toEqual(1);
                 });
 
-                it('show notification', function() {
-                    expect(dispatcher['system.warning']).toEqual({msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'});
-                })
+                it('notification is fired', inject(function(topicMessageDispatcherMock) {
+                    expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.quantity.upperbound', default:'The quantity for the selected item has been updated please choose a new quantity to add'});
+                }));
+            });
+
+            describe('on error with no stock', function() {
+                beforeEach(function() {
+                    fixture.update.calls[0].args[0].error({quantity:[
+                        {label:'upperbound', params:{boundary:0}}
+                    ]});
+                });
+
+                it('notification is fired', inject(function(topicMessageDispatcherMock) {
+                    expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'});
+                }));
             });
         });
 
@@ -414,36 +638,49 @@ describe('basket', function () {
             scope.item = {quantity:5};
         }));
 
-        describe('on submit', function () {
-            beforeEach(function () {
+        describe('on submit', function() {
+            beforeEach(function() {
                 fixture.sale = {
-                    id: 'sale-id',
-                    price: 100
+                    id:'sale-id',
+                    price:100
                 };
                 scope.submit(fixture.sale.id, fixture.sale.price);
             });
 
-            it('isIteminStock was called with default quantity', function () {
-                expect(isIteminStock.calls[0].args[1]).toEqual({
+            it('add sale to basket', function () {
+                expect(fixture.basket.add.calls[0].args[0].item).toEqual({
                     id: fixture.sale.id,
+                    price: fixture.sale.price,
                     quantity: 1
+                });
+            });
+
+            describe('with error', function() {
+                beforeEach(function() {
+                    fixture.basket.add.calls[0].args[0].error({quantity:[{label:'upperbound', params:{boundary:2}}]});
+                });
+
+                it('scope was updated with new quantity', inject(function() {
+                    expect(scope.item.quantity).toEqual(2);
+                }));
+
+                it('user is notified of stock change', inject(function(topicMessageDispatcherMock) {
+                    expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.quantity.upperbound', default:'You chose to add more to the basket than the stock we have available, please adjust your selection'});
+                }));
+
+                describe('for item without stock', function() {
+                    beforeEach(function() {
+                        fixture.basket.add.calls[0].args[0].error({quantity:[{label:'upperbound', params:{boundary:0}}]});
+                    });
+
+                    it('test', inject(function(topicMessageDispatcherMock) {
+                        expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'})
+                    }));
                 });
             });
         });
 
-        describe('on submit with undefined quantity', function() {
-            beforeEach(function() {
-                scope.quantity = undefined;
-                scope.item = {quantity: 5};
-                scope.submit('', '');
-            });
-
-            it('then we fall back to the item quantity plus one', function() {
-                expect(isIteminStock.calls[0].args[1].quantity).toEqual(6);
-            })
-        });
-
-        describe('on submit with quantity', function () {
+        describe('on submit with quantity', function() {
             beforeEach(function () {
                 fixture.sale = {
                     id: 'sale-id',
@@ -453,74 +690,11 @@ describe('basket', function () {
                 scope.submit(fixture.sale.id, fixture.sale.price);
             });
 
-            it('isIteminStock was called with default quantity', function () {
-                expect(isIteminStock.calls[0].args[1]).toEqual({
+            it('add sale to basket', function () {
+                expect(fixture.basket.add.calls[0].args[0].item).toEqual({
                     id: fixture.sale.id,
+                    price: fixture.sale.price,
                     quantity: 5
-                });
-            });
-
-            it('expose quantity on scope', function () {
-                expect(scope.quantity).toEqual(5);
-            });
-
-            describe('on success', function() {
-                beforeEach(function() {
-                    isIteminStock.calls[0].args[2]();
-                });
-
-                it('add sale to basket', function () {
-                    expect(fixture.basket.add).toHaveBeenCalledWith({
-                        id: fixture.sale.id,
-                        price: fixture.sale.price,
-                        quantity: 5
-                    });
-                });
-
-                describe('and submit again', function() {
-                    beforeEach(function() {
-                        items.push({id:fixture.sale.id, quantity:5});
-                        console.log(items);
-                        scope.submit(fixture.sale.id, fixture.sale.price);
-                    });
-
-                    it('test', inject(function() {
-                        expect(isIteminStock.calls[1]).toBeUndefined();
-                    }));
-                });
-            });
-
-            describe('on error', function() {
-                beforeEach(function() {
-                    scope.item = { quantity: 5};
-                });
-
-                describe('with item quantity and proposed quantity are invalid', function() {
-                    beforeEach(function() {
-                        scope.quantity = 6;
-                        isIteminStock.calls[0].args[3]();
-                    });
-
-                    it('display notification', function() {
-                        expect(dispatcher['catalog.item.updated']).toBeUndefined();
-                        expect(dispatcher['system.warning']).toEqual({msg: 'item.quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
-                    });
-                });
-
-
-                describe('with item quantity and proposed quantity are valid', function() {
-                    beforeEach(function() {
-                        scope.quantity = 5;
-                        isIteminStock.calls[0].args[3]();
-                    });
-
-                    it('catalog item gets updated', inject(function() {
-                        expect(dispatcher['catalog.item.updated']).toEqual(fixture.sale.id);
-                    }));
-
-                    it('and user gets notified of change', function() {
-                        expect(dispatcher['system.warning']).toEqual({msg:'item.quantity.updated', default:'The quantity for the selected item has been updated please choose a new quantity to add'})
-                    })
                 });
             });
         });
@@ -543,8 +717,8 @@ describe('basket', function () {
 
         describe('given a basket with some items', function () {
             beforeEach(inject(function (basket) {
-                basket.add({id: 'sale-1', price: 100, quantity: 2});
-                basket.add({id: 'sale-2', price: 200, quantity: 1});
+                basket.add({item:{id: 'sale-1', price: 100, quantity: 2}});
+                basket.add({item:{id: 'sale-2', price: 200, quantity: 1}});
             }));
 
             describe('and a locale', function () {
@@ -709,3 +883,8 @@ describe('basket', function () {
 
     });
 });
+
+angular.module('mocks', [])
+    .factory('validateOrder', function() {
+        return jasmine.createSpy('validateOrder');
+    });

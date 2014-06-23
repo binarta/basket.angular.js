@@ -1,7 +1,7 @@
 angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
-    .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', LocalStorageBasketFactory])
-    .controller('AddToBasketController', ['$scope', 'basket', 'isItemInStock', 'topicMessageDispatcher', AddToBasketController])
-    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'localStorage', 'isItemInStock', 'topicMessageDispatcher', ViewBasketController])
+    .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', 'validateOrder', LocalStorageBasketFactory])
+    .controller('AddToBasketController', ['$scope', 'basket', 'topicMessageDispatcher', AddToBasketController])
+    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'topicMessageDispatcher', 'validateOrder', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', 'localStorage', '$window', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
@@ -12,7 +12,7 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
             .when('/:locale/payment-approval', {templateUrl: 'partials/shop/approval.html', controller: 'RedirectToApprovalUrlController'});
     }]);
 
-function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher, restServiceHandler) {
+function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher, restServiceHandler, validateOrder) {
     var basket;
 
     function isUninitialized() {
@@ -48,8 +48,12 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
         findItemById(it.id).quantity += it.quantity;
     }
 
+    function decrement(it) {
+        findItemById(it.id).quantity -= it.quantity;
+    }
+
     function append(it) {
-        basket.push(it);
+        basket.push({id:it.id, price:it.price, quantity:it.quantity});
     }
 
     function raiseRefreshNotification() {
@@ -60,6 +64,13 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
         return it.quantity > 0;
     }
 
+    function removeItem(toRemove) {
+        var idx = basket.reduce(function(p,c,i) {
+            return c.id == toRemove.id ? i : p;
+        }, -1);
+        basket.splice(idx, 1);
+    }
+
     return new function () {
         if (isUninitialized()) initialize();
         rehydrate();
@@ -67,24 +78,70 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
             rehydrate();
         };
         this.add = function (it) {
-            if (isQuantified(it)) {
-                contains(it) ? increment(it) : append(it);
+            var scope = {};
+            var success = function() {
                 flush();
                 raiseRefreshNotification();
                 topicMessageDispatcher.fire('basket.item.added', 'ok');
+                if (it.success) it.success();
+            };
+
+            var error = function() {
+                if (violationFor(it.item.id)) {
+                    revertAdd();
+                    if (it.error) it.error(violationFor(it.item.id));
+                }
+                else success();
+            };
+
+            if (isQuantified(it.item)) {
+                contains(it.item) ? increment(it.item) : append(it.item);
+                validateOrder(scope, {
+                    data: {items: basket},
+                    success:success,
+                    error: error
+                });
+            }
+
+            function violationFor(id) {
+                return scope.violations['items'][id]
+            }
+
+            function revertAdd() {
+                var item = findItemById(it.item.id);
+                if (item && item.quantity - it.item.quantity > 0) decrement(it.item);
+                else removeItem(it.item);
             }
         };
         this.update = function (it) {
-            if (isQuantified(it)) {
-                findItemById(it.id).quantity = it.quantity + 0;
+            var scope = {};
+            function violationFor(id) {
+                return scope.violations['items'][id]
+            }
+            var success = function() {
                 flush();
                 raiseRefreshNotification();
+                if (it.success) it.success();
+            };
+            var error = function() {
+                if (violationFor(it.item.id)) {
+                    rehydrate();
+                    if (it.error) it.error(violationFor(it.item.id));
+                } else success();
+            };
+            if (isQuantified(it.item)) {
+                findItemById(it.item.id).quantity = it.item.quantity + 0;
+                validateOrder(scope, {
+                    data: {
+                        items:basket
+                    },
+                    success: success,
+                    error: error
+                });
             }
         };
         this.remove = function (toRemove) {
-            basket = basket.filter(function (it) {
-                return it.id != toRemove.id;
-            });
+            removeItem(toRemove);
             flush();
             raiseRefreshNotification();
         };
@@ -130,7 +187,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     };
 }
 
-function ViewBasketController($scope, basket, topicRegistry, $location, localStorage, isIteminStock, topicMessageDispatcher) {
+function ViewBasketController($scope, basket, topicRegistry, $location, topicMessageDispatcher, validateOrder) {
     ['app.start', 'basket.refresh'].forEach(function (it) {
         topicRegistry.subscribe(it, function () {
             basket.render(function (it) {
@@ -141,16 +198,42 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
         });
     });
 
+    $scope.init = function(args) {
+        if (args.validateOrder) {
+            validateOrder($scope, {
+                data: {
+                    items: basket.items()
+                },
+                error: function() {
+                    $scope.stock = {};
+                    Object.keys($scope.violations['items']).forEach(function(id) {
+                        Object.keys($scope.violations.items[id]).forEach(function(field) {
+                            $scope.violations.items[id][field].forEach(function(it) {
+                                if (it.label == 'upperbound') $scope.stock[id] = it.params.boundary;
+                            });
+                        });
+                    })
+                }
+            });
+        }
+    };
+
     $scope.update = function (it) {
-        var success = function() {
-            basket.update(it);
-        };
-        var error = function() {
-            basket.refresh();
-            $scope.items = basket.items();
-            topicMessageDispatcher.fire('system.warning', {msg: 'quantity.upperbound', default:'The amount you chose to add exceeds the available amount in stock'})
-        };
-        isIteminStock($scope, it, success, error);
+        basket.update({
+            item:it,
+            error: function(violation) {
+                if (!$scope.stock) $scope.stock = {};
+                $scope.stock[it.id] = extractStockFromQuantityViolationParams(violation);
+                if ($scope.stock[it.id] == 0) topicMessageDispatcher.fire('system.warning', {msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'});
+                else topicMessageDispatcher.fire('system.warning', {msg:'item.quantity.upperbound', default:'The quantity for the selected item has been updated please choose a new quantity to add'});
+            }
+        });
+
+        function extractStockFromQuantityViolationParams(violation) {
+            return violation.quantity.reduce(function(p,c) {
+                return c.label = 'upperbound' ? c.params.boundary : p;
+            }, -1);
+        }
     };
 
     $scope.remove = function (it) {
@@ -173,43 +256,29 @@ function ViewBasketController($scope, basket, topicRegistry, $location, localSto
     };
 }
 
-function AddToBasketController($scope, basket, isIteminStock, topicMessageDispatcher) {
+function AddToBasketController($scope, basket, topicMessageDispatcher) {
     $scope.quantity = 1;
 
     $scope.init = function (quantity) {
         $scope.quantity = quantity;
     };
 
-    $scope.submit = function (id, price) {
-        function shouldUpdateView() {
-            return $scope.quantity <= $scope.item.quantity;
-        }
+    $scope.submit = function(id, price) {
+        basket.add({
+            item: {id: id, price: price, quantity: $scope.quantity},
+            error: function(violation) {
+                var stock = extractStockFromQuantityViolationParams(violation);
+                $scope.item.quantity = stock;
+                if ($scope.item.quantity == 0) topicMessageDispatcher.fire('system.warning', {msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'});
+                else topicMessageDispatcher.fire('system.warning', {msg:'item.quantity.upperbound', default:'You chose to add more to the basket than the stock we have available, please adjust your selection'});
+            }
+        })
+    };
 
-        function updateViewAndNotifyUser() {
-            topicMessageDispatcher.fire('catalog.item.updated', id);
-            topicMessageDispatcher.fire('system.warning', {msg: 'item.quantity.updated', default:'The quantity for the selected item has been updated please choose a new quantity to add'})
-        }
-        function basketWouldOverflowForItem() {
-            return $scope.item.quantity < basketItem.quantity + $scope.quantity;
-        }
-
-        function notifyUpperboundViolation() {
-            topicMessageDispatcher.fire('system.warning', {msg: 'item.quantity.upperbound', default: 'The amount you chose to add exceeds the available amount in stock'});
-        }
-
-        var success = function() {
-            basket.add({id: id, price: price, quantity: $scope.quantity});
-        };
-        var error = function() {
-            if (shouldUpdateView()) updateViewAndNotifyUser();
-            else notifyUpperboundViolation();
-        };
-        var args = {id:id, quantity:$scope.quantity || $scope.item.quantity + 1};
-        var basketItem = {quantity:0};
-        basket.items().forEach(function(it) {
-            if (it.id == id) basketItem = it;
-        });
-        basketWouldOverflowForItem() ? notifyUpperboundViolation() : isIteminStock($scope, args, success, error);
+    function extractStockFromQuantityViolationParams(violation) {
+        return violation.quantity.reduce(function(p,c) {
+            return c.label = 'upperbound' ? c.params.boundary : p;
+        }, $scope.item.quantity);
     }
 }
 
