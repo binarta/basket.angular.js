@@ -521,8 +521,13 @@ describe('basket', function () {
         });
 
         describe('on update', function() {
+            var updateItem = {};
+            var items = [];
+
             beforeEach(function() {
-                scope.update({id:'I', quantity:5});
+                fixture.basket.items = function() {return items};
+                updateItem = {id:'I', quantity:5};
+                scope.update(updateItem);
             });
 
             it('update for item was called', function() {
@@ -531,6 +536,7 @@ describe('basket', function () {
 
             describe('on error', function() {
                 beforeEach(function() {
+                    items.push({id:'I', quantity:2}, {id:'I2', quantity:4});
                     fixture.update.calls[0].args[0].error({quantity:[
                         {label:'upperbound', params:{boundary:1}}
                     ]});
@@ -543,6 +549,10 @@ describe('basket', function () {
                 it('notification is fired', inject(function(topicMessageDispatcherMock) {
                     expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.quantity.upperbound', default:'The quantity for the selected item has been updated please choose a new quantity to add'});
                 }));
+
+                it('test', function() {
+                    expect(updateItem.quantity).toEqual(2);
+                })
             });
 
             describe('on error with no stock', function() {

@@ -222,6 +222,13 @@ function ViewBasketController($scope, basket, topicRegistry, $location, topicMes
         basket.update({
             item:it,
             error: function(violation) {
+                function getPreviouslySelectedQuantity() {
+                    return basket.items().reduce(function (p, c) {
+                        return c.id == it.id ? c.quantity : p;
+                    }, it.quantity);
+                }
+
+                it.quantity = getPreviouslySelectedQuantity();
                 if (!$scope.stock) $scope.stock = {};
                 $scope.stock[it.id] = extractStockFromQuantityViolationParams(violation);
                 if ($scope.stock[it.id] == 0) topicMessageDispatcher.fire('system.warning', {msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'});
