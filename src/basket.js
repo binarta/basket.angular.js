@@ -1,7 +1,9 @@
 angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', 'validateOrder', LocalStorageBasketFactory])
-    .controller('AddToBasketController', ['$scope', 'basket', 'topicMessageDispatcher', AddToBasketController])
-    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'topicMessageDispatcher', 'validateOrder', ViewBasketController])
+    .factory('addToBasketPresenter', [AddToBasketPresenterFactory])
+    .factory('updateBasketPresenter', [UpdateBasketPresenterFactory])
+    .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', AddToBasketController])
+    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'validateOrder', 'updateBasketPresenter', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', 'localStorage', '$window', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
@@ -187,32 +189,29 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     };
 }
 
-function ViewBasketController($scope, basket, topicRegistry, $location, topicMessageDispatcher, validateOrder) {
-    ['app.start', 'basket.refresh'].forEach(function (it) {
-        topicRegistry.subscribe(it, function () {
-            basket.render(function (it) {
-                $scope.items = it.items;
-                $scope.additionalCharges = it.additionalCharges;
-                $scope.subTotal = it.price;
-            });
-        });
-    });
+function ViewBasketController($scope, basket, topicRegistry, $location, validateOrder, updateBasketPresenter) {
+    var config = {};
 
     $scope.init = function(args) {
-        if (args.validateOrder) {
+        config.validateOrder = args.validateOrder;
+        if (config.validateOrder) {
             validateOrder($scope, {
                 data: {
                     items: basket.items()
                 },
                 error: function() {
-                    $scope.stock = {};
-                    Object.keys($scope.violations['items']).forEach(function(id) {
-                        Object.keys($scope.violations.items[id]).forEach(function(field) {
-                            $scope.violations.items[id][field].forEach(function(it) {
-                                if (it.label == 'upperbound') $scope.stock[id] = it.params.boundary;
-                            });
+                    var violations = $scope.violations;
+
+                    $scope.violations = {items:{}};
+                    Object.keys(violations.items).forEach(function(id) {
+                        $scope.violations.items[id] = {};
+                        Object.keys(violations.items[id]).forEach(function(field) {
+                            $scope.violations.items[id][field] = violations.items[id][field].reduce(function(p,c) {
+                                p[c.label] = c.params;
+                                return p;
+                            }, {})
                         });
-                    })
+                    });
                 }
             });
         }
@@ -221,6 +220,10 @@ function ViewBasketController($scope, basket, topicRegistry, $location, topicMes
     $scope.update = function (it) {
         basket.update({
             item:it,
+            success:function() {
+                $scope.violations = {};
+                if (updateBasketPresenter.success) updateBasketPresenter.success({$scope:$scope});
+            },
             error: function(violation) {
                 function getPreviouslySelectedQuantity() {
                     return basket.items().reduce(function (p, c) {
@@ -228,19 +231,26 @@ function ViewBasketController($scope, basket, topicRegistry, $location, topicMes
                     }, it.quantity);
                 }
 
+                function init() {
+                    if (!$scope.violations) $scope.violations = {};
+                    if (!$scope.violations.items) $scope.violations.items = {};
+                    if (!$scope.errorClassFor) $scope.errorClassFor = {};
+                    if (!$scope.errorClassFor[it.id]) $scope.errorClassFor[it.id] = {};
+                    if (!$scope.violations[it.id]) $scope.violations.items[it.id] = {};
+                }
+
+                init();
+                Object.keys(violation).forEach(function(field) {
+                    $scope.errorClassFor[it.id][field] = 'error';
+                    $scope.violations.items[it.id][field] = violation[field].reduce(function(p,c) {
+                        p[c.label] = c.params;
+                        return p;
+                    }, {});
+                });
                 it.quantity = getPreviouslySelectedQuantity();
-                if (!$scope.stock) $scope.stock = {};
-                $scope.stock[it.id] = extractStockFromQuantityViolationParams(violation);
-                if ($scope.stock[it.id] == 0) topicMessageDispatcher.fire('system.warning', {msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'});
-                else topicMessageDispatcher.fire('system.warning', {msg:'item.quantity.upperbound', default:'You chose to add more to the basket than the stock we have available, please adjust your selection'});
+                if (updateBasketPresenter.error) updateBasketPresenter.error({$scope:$scope, item:it});
             }
         });
-
-        function extractStockFromQuantityViolationParams(violation) {
-            return violation.quantity.reduce(function(p,c) {
-                return c.label = 'upperbound' ? c.params.boundary : p;
-            }, -1);
-        }
     };
 
     $scope.remove = function (it) {
@@ -261,9 +271,24 @@ function ViewBasketController($scope, basket, topicRegistry, $location, topicMes
             $location.path('/');
         }
     };
+
+    ['app.start', 'basket.refresh'].forEach(function (it) {
+        topicRegistry.subscribe(it, function () {
+            basket.render(function (it) {
+                $scope.items = it.items;
+                $scope.additionalCharges = it.additionalCharges;
+                $scope.subTotal = it.price;
+            });
+            $scope.init(config);
+        });
+    });
 }
 
-function AddToBasketController($scope, basket, topicMessageDispatcher) {
+function UpdateBasketPresenterFactory() {
+    return {}
+}
+
+function AddToBasketController($scope, basket, addToBasketPresenter) {
     $scope.quantity = 1;
 
     $scope.init = function (quantity) {
@@ -273,20 +298,27 @@ function AddToBasketController($scope, basket, topicMessageDispatcher) {
     $scope.submit = function(id, price) {
         basket.add({
             item: {id: id, price: price, quantity: $scope.quantity},
+            success: function() {
+                if (addToBasketPresenter.success) addToBasketPresenter.success({$scope:$scope});
+            },
             error: function(violation) {
-                var stock = extractStockFromQuantityViolationParams(violation);
-                $scope.item.quantity = stock;
-                if ($scope.item.quantity == 0) topicMessageDispatcher.fire('system.warning', {msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'});
-                else topicMessageDispatcher.fire('system.warning', {msg:'item.quantity.upperbound', default:'You chose to add more to the basket than the stock we have available, please adjust your selection'});
+                $scope.violations = {};
+                $scope.errorClassFor = {};
+                Object.keys(violation).forEach(function(field) {
+                    $scope.errorClassFor[field] = 'error';
+                    $scope.violations[field] = violation[field].reduce(function(p,c) {
+                        p[c.label] = c.params;
+                        return p;
+                    }, {});
+                });
+                if (addToBasketPresenter.error) addToBasketPresenter.error({$scope:$scope, violations:violation, id:id});
             }
         })
     };
+}
 
-    function extractStockFromQuantityViolationParams(violation) {
-        return violation.quantity.reduce(function(p,c) {
-            return c.label = 'upperbound' ? c.params.boundary : p;
-        }, $scope.item.quantity);
-    }
+function AddToBasketPresenterFactory() {
+    return {}
 }
 
 function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler, $location, addressSelection, localStorage, $window) {

@@ -437,6 +437,7 @@ describe('basket', function () {
 
     describe('ViewBasketController', function () {
         beforeEach(inject(function ($controller) {
+            fixture.updateBasketPresenter = {success: jasmine.createSpy('success'), error: jasmine.createSpy('error')};
             fixture.refresh = jasmine.createSpy('refresh');
             fixture.clear = jasmine.createSpy('clear');
             fixture.update = jasmine.createSpy('update');
@@ -460,7 +461,7 @@ describe('basket', function () {
                 remove: fixture.remove,
                 refresh: fixture.refresh
             };
-            ctrl = $controller(ViewBasketController, {$scope: scope, basket: fixture.basket, isIteminStock:isIteminStock});
+            ctrl = $controller(ViewBasketController, {$scope: scope, basket: fixture.basket, updateBasketPresenter:fixture.updateBasketPresenter});
         }));
 
         ['app.start', 'basket.refresh'].forEach(function (notification) {
@@ -501,7 +502,7 @@ describe('basket', function () {
                                     quantity:[{label:'upperbound', params:{boundary:1}}]
                                 },
                                 'id-2': {
-                                    quantity:[{label:'upperbound', params:{boundary:2}}]
+                                    quantity:[{label:'lowerbound', params:{boundary:2}}]
                                 }
                             }
                         };
@@ -509,7 +510,31 @@ describe('basket', function () {
                     }));
 
                     it('boundaries are extracted from violations and put on the scope', function() {
-                        expect(scope.stock).toEqual({'id-1':1, 'id-2':2})
+                        expect(scope.violations).toEqual({
+                            items: {
+                                'id-1': {
+                                    quantity: {
+                                        upperbound: {boundary: 1}
+                                    }
+                                },
+                                'id-2': {
+                                    quantity: {
+                                        lowerbound: {boundary:2}
+                                    }
+                                }
+                            }
+                        })
+                    })
+                });
+
+                describe('on basket refresh', function() {
+                    beforeEach(function() {
+                        scope.init = jasmine.createSpy('init');
+                        registry['basket.refresh']();
+                    });
+
+                    it('init is triggered with original config', function() {
+                        expect(scope.init.calls[0].args[0]).toEqual({validateOrder:true})
                     })
                 });
             });
@@ -534,37 +559,75 @@ describe('basket', function () {
                 expect(fixture.update.calls[0].args[0].item).toEqual({id:'I', quantity:5});
             });
 
-            describe('on error', function() {
+            describe('on success', function() {
                 beforeEach(function() {
-                    items.push({id:'I', quantity:2}, {id:'I2', quantity:4});
-                    fixture.update.calls[0].args[0].error({quantity:[
-                        {label:'upperbound', params:{boundary:1}}
-                    ]});
+                    fixture.update.calls[0].args[0].success();
                 });
 
-                it('stock is exposed on scope', function() {
-                    expect(scope.stock.I).toEqual(1);
+                it('violations are reset', function() {
+                    expect(scope.violations).toEqual({});
                 });
 
-                it('notification is fired', inject(function(topicMessageDispatcherMock) {
-                    expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.quantity.upperbound', default:'You chose to add more to the basket than the stock we have available, please adjust your selection'});
-                }));
-
-                it('test', function() {
-                    expect(updateItem.quantity).toEqual(2);
+                it('presenter presents success', function() {
+                    expect(fixture.updateBasketPresenter.success.calls[0].args[0]).toEqual({$scope:scope});
                 })
             });
 
-            describe('on error with no stock', function() {
+            describe('on error', function() {
                 beforeEach(function() {
-                    fixture.update.calls[0].args[0].error({quantity:[
-                        {label:'upperbound', params:{boundary:0}}
-                    ]});
+                    scope.violations = {
+                        items: {
+                            I2: {
+                                quantity: {
+                                    upperbound: {boundary:2}
+                                }
+                            }
+                        }
+                    };
+                    items.push({id:'I', quantity:2}, {id:'I2', quantity:4});
+                    fixture.update.calls[0].args[0].error({
+                        quantity:[
+                            {label:'upperbound', params:{boundary:1}}
+                        ]
+                    });
                 });
 
-                it('notification is fired', inject(function(topicMessageDispatcherMock) {
-                    expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'});
-                }));
+                it('violations are exposed on scope', function() {
+                    expect(scope.violations).toEqual({
+                        items: {
+                            I: {
+                                quantity: {
+                                    upperbound: {boundary: 1}
+                                }
+                            },
+                            I2: {
+                                quantity: {
+                                    upperbound: {boundary:2}
+                                }
+                            }
+                        }
+                    })
+                });
+
+                it('error class is exposed on scope', function() {
+                    expect(scope.errorClassFor).toEqual({
+                        I: {
+                            quantity: 'error'
+                        }
+                    })
+                });
+
+                it('restore quantity to original value', function() {
+                    expect(updateItem.quantity).toEqual(2);
+                });
+
+                it('update basket presenter error handler was called', function() {
+                    expect(fixture.updateBasketPresenter.error.calls[0].args[0]).toEqual({
+                        $scope: scope,
+                        item: updateItem
+                    })
+                })
+
             });
         });
 
@@ -639,12 +702,13 @@ describe('basket', function () {
         var items;
 
         beforeEach(inject(function ($controller) {
+            fixture.addToBasketPresenter = {success: jasmine.createSpy('success'), error: jasmine.createSpy('error')};
             items = [];
             fixture.basket = {
                 add: jasmine.createSpy('add'),
                 items: function() {return items}
             };
-            ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket, isIteminStock:isIteminStock});
+            ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket, addToBasketPresenter:fixture.addToBasketPresenter});
             scope.item = {quantity:5};
         }));
 
@@ -665,28 +729,44 @@ describe('basket', function () {
                 });
             });
 
+            describe('with success', function() {
+                beforeEach(function() {
+                    fixture.basket.add.calls[0].args[0].success();
+                });
+
+                it('presenter presents success', function() {
+                    expect(fixture.addToBasketPresenter.success.calls[0].args[0]).toEqual({$scope:scope});
+                })
+            });
+
             describe('with error', function() {
                 beforeEach(function() {
                     fixture.basket.add.calls[0].args[0].error({quantity:[{label:'upperbound', params:{boundary:2}}]});
                 });
 
-                it('scope was updated with new quantity', inject(function() {
-                    expect(scope.item.quantity).toEqual(2);
-                }));
-
-                it('user is notified of stock change', inject(function(topicMessageDispatcherMock) {
-                    expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.quantity.upperbound', default:'You chose to add more to the basket than the stock we have available, please adjust your selection'});
-                }));
-
-                describe('for item without stock', function() {
-                    beforeEach(function() {
-                        fixture.basket.add.calls[0].args[0].error({quantity:[{label:'upperbound', params:{boundary:0}}]});
-                    });
-
-                    it('test', inject(function(topicMessageDispatcherMock) {
-                        expect(topicMessageDispatcherMock['system.warning']).toEqual({msg:'item.out.of.stock', default:'The item has gone out of stock, you can subscribe to be notified when it is available again'})
-                    }));
+                it('violation gets exposed on scope', function() {
+                    expect(scope.violations).toEqual({
+                        quantity: {
+                            upperbound: {
+                                boundary: 2
+                            }
+                        }
+                    })
                 });
+
+                it('errorclass for is exposed', function() {
+                    expect(scope.errorClassFor).toEqual({
+                        quantity: 'error'
+                    })
+                });
+
+                it('test', function() {
+                    expect(fixture.addToBasketPresenter.error.calls[0].args[0]).toEqual({
+                        $scope: scope,
+                        violations: {quantity:[{label:'upperbound', params:{boundary:2}}]},
+                        id: 'sale-id'
+                    })
+                })
             });
         });
 
