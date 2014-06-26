@@ -247,7 +247,6 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
                         return p;
                     }, {});
                 });
-                it.quantity = getPreviouslySelectedQuantity();
                 if (updateBasketPresenter.error) updateBasketPresenter.error({$scope:$scope, item:it});
             }
         });

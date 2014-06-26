@@ -618,7 +618,7 @@ describe('basket', function () {
                 });
 
                 it('restore quantity to original value', function() {
-                    expect(updateItem.quantity).toEqual(2);
+                    expect(updateItem.quantity).toEqual(5);
                 });
 
                 it('update basket presenter error handler was called', function() {
