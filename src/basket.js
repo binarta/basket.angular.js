@@ -347,7 +347,8 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
                 shipping: {
                     label: shipping.label || '',
                     addressee: shipping.addressee || ''
-                }
+                },
+                reportType: 'complex'
             }
         };
         ctx.success = function (payload) {

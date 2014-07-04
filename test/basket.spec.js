@@ -855,7 +855,8 @@ describe('basket', function () {
                                 shipping: {
                                     label: 'shipping-label',
                                     addressee: 'shipping-addressee'
-                                }
+                                },
+                                reportType: 'complex'
                             });
                         }));
 
@@ -914,7 +915,8 @@ describe('basket', function () {
                             shipping: {
                                 label: '',
                                 addressee: ''
-                            }
+                            },
+                            reportType: 'complex'
                         });
                     });
                 });
