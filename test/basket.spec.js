@@ -154,6 +154,11 @@ describe('basket', function () {
                                 ctx.success('payload');
                                 expect(fixture.order).toEqual('payload');
                             });
+
+                            it('test', inject(function(topicMessageDispatcherMock) {
+                                ctx.success('payload');
+                                expect(topicMessageDispatcherMock['basket.rendered']).toEqual('ok');
+                            }));
                         });
 
                         it('are added to the item list', function () {
@@ -484,59 +489,56 @@ describe('basket', function () {
                     scope.init({validateOrder:true});
                 });
 
-                it('scope is passed to order validation', inject(function(validateOrder) {
-                    expect(validateOrder.calls[0].args[0]).toEqual(scope);
-                }));
-
-                it('basket items are passed along', inject(function(validateOrder) {
-                    expect(validateOrder.calls[0].args[1].data).toEqual({
-                        items: fixture.basket.items()
-                    })
-                }));
-
-                describe('with error', function() {
-                    beforeEach(inject(function(validateOrder) {
-                        scope.violations = {
-                            items: {
-                                'id-1': {
-                                    quantity:[{label:'upperbound', params:{boundary:1}}]
-                                },
-                                'id-2': {
-                                    quantity:[{label:'lowerbound', params:{boundary:2}}]
-                                }
-                            }
-                        };
-                        validateOrder.calls[0].args[1].error();
-                    }));
-
-                    it('boundaries are extracted from violations and put on the scope', function() {
-                        expect(scope.violations).toEqual({
-                            items: {
-                                'id-1': {
-                                    quantity: {
-                                        upperbound: {boundary: 1}
-                                    }
-                                },
-                                'id-2': {
-                                    quantity: {
-                                        lowerbound: {boundary:2}
-                                    }
-                                }
-                            }
-                        })
-                    })
-                });
-
-                describe('on basket refresh', function() {
+                describe('on basket.rendered', function() {
                     beforeEach(function() {
-                        scope.init = jasmine.createSpy('init');
-                        registry['basket.refresh']();
+                        registry['basket.rendered']();
                     });
 
-                    it('init is triggered with original config', function() {
-                        expect(scope.init.calls[0].args[0]).toEqual({validateOrder:true})
-                    })
+                    it('scope is passed to order validation', inject(function(validateOrder) {
+                        expect(validateOrder.calls[0].args[0]).toEqual(scope);
+                    }));
+
+                    it('basket items are passed along', inject(function(validateOrder) {
+                        expect(validateOrder.calls[0].args[1].data).toEqual({
+                            items: fixture.basket.items()
+                        })
+                    }));
+
+                    describe('with error', function() {
+                        beforeEach(inject(function(validateOrder) {
+                            scope.violations = {
+                                items: {
+                                    'id-1': {
+                                        quantity:[{label:'upperbound', params:{boundary:1}}]
+                                    },
+                                    'id-2': {
+                                        quantity:[{label:'lowerbound', params:{boundary:2}}]
+                                    }
+                                }
+                            };
+                            validateOrder.calls[0].args[1].error();
+                        }));
+
+                        it('boundaries are extracted from violations and put on the scope', function() {
+                            expect(scope.violations).toEqual({
+                                items: {
+                                    'id-1': {
+                                        quantity: {
+                                            upperbound: {boundary: 1}
+                                        }
+                                    },
+                                    'id-2': {
+                                        quantity: {
+                                            lowerbound: {boundary:2}
+                                        }
+                                    }
+                                }
+                            })
+                        })
+                    });
                 });
+
+
             });
         });
 
@@ -980,3 +982,20 @@ angular.module('mocks', [])
     .factory('validateOrder', function() {
         return jasmine.createSpy('validateOrder');
     });
+
+angular.module('fakes', []).factory('ngRegisterTopicHandler', function(topicRegistry) {
+    return function(scope, topic, handler) {
+        if (topic) topicRegistry.subscribe(topic, handler);
+        else {
+            var args = scope;
+            if (args.executeHandlerOnce) {
+                var callback = function() {
+                    topicRegistry.unsubscribe(args.topic, callback);
+                    args.handler();
+                };
+                topicRegistry.subscribe(args.topic, callback);
+            }
+            else topicRegistry.subscribe(args.topic, args.handler);
+        }
+    }
+});

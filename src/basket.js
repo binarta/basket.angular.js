@@ -3,7 +3,7 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .factory('addToBasketPresenter', [AddToBasketPresenterFactory])
     .factory('updateBasketPresenter', [UpdateBasketPresenterFactory])
     .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', AddToBasketController])
-    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'validateOrder', 'updateBasketPresenter', ViewBasketController])
+    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', 'localStorage', '$window', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
@@ -76,37 +76,45 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     return new function () {
         if (isUninitialized()) initialize();
         rehydrate();
+        function onError(scope, it, cb, success) {
+            if (violationOnScopeFor(scope, it.item.id)) {
+                cb();
+                if (it.error) it.error(violationOnScopeFor(scope, it.item.id));
+            } else success();
+        }
+        function violationOnScopeFor(scope, id) {
+            return scope.violations.items[id];
+        }
+        function validate(scope, success, error) {
+            validateOrder(scope, {
+                data:{items:basket},
+                success: success,
+                error:error
+            })
+        }
+        function onSuccess(it, topic) {
+            flush();
+            raiseRefreshNotification();
+            if (topic) topicMessageDispatcher.fire(topic, 'ok');
+            if (it.success) it.success();
+        }
+
         this.refresh = function() {
             rehydrate();
         };
         this.add = function (it) {
             var scope = {};
             var success = function() {
-                flush();
-                raiseRefreshNotification();
-                topicMessageDispatcher.fire('basket.item.added', 'ok');
-                if (it.success) it.success();
+                onSuccess(it, 'basket.item.added');
             };
 
             var error = function() {
-                if (violationFor(it.item.id)) {
-                    revertAdd();
-                    if (it.error) it.error(violationFor(it.item.id));
-                }
-                else success();
+                onError(scope, it, revertAdd, success);
             };
 
             if (isQuantified(it.item)) {
                 contains(it.item) ? increment(it.item) : append(it.item);
-                validateOrder(scope, {
-                    data: {items: basket},
-                    success:success,
-                    error: error
-                });
-            }
-
-            function violationFor(id) {
-                return scope.violations['items'][id]
+                validate(scope, success, error);
             }
 
             function revertAdd() {
@@ -117,29 +125,15 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
         };
         this.update = function (it) {
             var scope = {};
-            function violationFor(id) {
-                return scope.violations['items'][id]
-            }
             var success = function() {
-                flush();
-                raiseRefreshNotification();
-                if (it.success) it.success();
+                onSuccess(it);
             };
             var error = function() {
-                if (violationFor(it.item.id)) {
-                    rehydrate();
-                    if (it.error) it.error(violationFor(it.item.id));
-                } else success();
+                onError(scope, it, rehydrate, success);
             };
             if (isQuantified(it.item)) {
                 findItemById(it.item.id).quantity = it.item.quantity + 0;
-                validateOrder(scope, {
-                    data: {
-                        items:basket
-                    },
-                    success: success,
-                    error: error
-                });
+                validate(scope, success, error);
             }
         };
         this.remove = function (toRemove) {
@@ -175,6 +169,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                     basket = payload.items;
                     flush();
                     presenter(payload);
+                    topicMessageDispatcher.fire('basket.rendered', 'ok');
                 }
             });
             presenter({
@@ -189,32 +184,11 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     };
 }
 
-function ViewBasketController($scope, basket, topicRegistry, $location, validateOrder, updateBasketPresenter) {
+function ViewBasketController($scope, basket, topicRegistry, $location, validateOrder, updateBasketPresenter, ngRegisterTopicHandler) {
     var config = {};
 
     $scope.init = function(args) {
         config.validateOrder = args.validateOrder;
-        if (config.validateOrder) {
-            validateOrder($scope, {
-                data: {
-                    items: basket.items()
-                },
-                error: function() {
-                    var violations = $scope.violations;
-
-                    $scope.violations = {items:{}};
-                    Object.keys(violations.items).forEach(function(id) {
-                        $scope.violations.items[id] = {};
-                        Object.keys(violations.items[id]).forEach(function(field) {
-                            $scope.violations.items[id][field] = violations.items[id][field].reduce(function(p,c) {
-                                p[c.label] = c.params;
-                                return p;
-                            }, {})
-                        });
-                    });
-                }
-            });
-        }
     };
 
     $scope.update = function (it) {
@@ -225,12 +199,6 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
                 if (updateBasketPresenter.success) updateBasketPresenter.success({$scope:$scope});
             },
             error: function(violation) {
-                function getPreviouslySelectedQuantity() {
-                    return basket.items().reduce(function (p, c) {
-                        return c.id == it.id ? c.quantity : p;
-                    }, it.quantity);
-                }
-
                 function init() {
                     if (!$scope.violations) $scope.violations = {};
                     if (!$scope.violations.items) $scope.violations.items = {};
@@ -271,6 +239,35 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
         }
     };
 
+    ngRegisterTopicHandler({
+        executeHandlerOnce:true,
+        scope:$scope,
+        topic:'basket.rendered',
+        handler:function() {
+            if (config.validateOrder) {
+                validateOrder($scope, {
+                    data: {
+                        items: basket.items()
+                    },
+                    error: function() {
+                        var violations = $scope.violations;
+
+                        $scope.violations = {items:{}};
+                        Object.keys(violations.items).forEach(function(id) {
+                            $scope.violations.items[id] = {};
+                            Object.keys(violations.items[id]).forEach(function(field) {
+                                $scope.violations.items[id][field] = violations.items[id][field].reduce(function(p,c) {
+                                    p[c.label] = c.params;
+                                    return p;
+                                }, {})
+                            });
+                        });
+                    }
+                });
+            }
+        }
+    });
+
     ['app.start', 'basket.refresh'].forEach(function (it) {
         topicRegistry.subscribe(it, function () {
             basket.render(function (it) {
@@ -278,7 +275,6 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
                 $scope.additionalCharges = it.additionalCharges;
                 $scope.subTotal = it.price;
             });
-            $scope.init(config);
         });
     });
 }
