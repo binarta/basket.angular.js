@@ -714,6 +714,12 @@ describe('basket', function () {
             scope.item = {quantity:5};
         }));
 
+        describe('initially', function() {
+            it('controller is not working', function() {
+                expect(scope.working).toEqual(false);
+            });
+        });
+
         describe('on submit', function() {
             beforeEach(function() {
                 fixture.sale = {
@@ -721,6 +727,10 @@ describe('basket', function () {
                     price:100
                 };
                 scope.submit(fixture.sale.id, fixture.sale.price);
+            });
+
+            it('controller is working', function() {
+                expect(scope.working).toEqual(true);
             });
 
             it('add sale to basket', function () {
@@ -736,6 +746,10 @@ describe('basket', function () {
                     fixture.basket.add.calls[0].args[0].success();
                 });
 
+                it('controller is not working', function() {
+                    expect(scope.working).toEqual(false);
+                });
+
                 it('presenter presents success', function() {
                     expect(fixture.addToBasketPresenter.success.calls[0].args[0]).toEqual({$scope:scope});
                 })
@@ -744,6 +758,10 @@ describe('basket', function () {
             describe('with error', function() {
                 beforeEach(function() {
                     fixture.basket.add.calls[0].args[0].error({quantity:[{label:'upperbound', params:{boundary:2}}]});
+                });
+
+                it('controller is not working', function() {
+                    expect(scope.working).toEqual(false);
                 });
 
                 it('violation gets exposed on scope', function() {

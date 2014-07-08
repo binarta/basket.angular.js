@@ -285,16 +285,20 @@ function UpdateBasketPresenterFactory() {
 
 function AddToBasketController($scope, basket, addToBasketPresenter) {
     $scope.quantity = 1;
+    $scope.working = false;
 
     $scope.init = function (quantity) {
         $scope.quantity = quantity;
     };
 
     $scope.submit = function(id, price) {
+        $scope.working = true;
+
         basket.add({
             item: {id: id, price: price, quantity: $scope.quantity},
             success: function() {
                 if (addToBasketPresenter.success) addToBasketPresenter.success({$scope:$scope});
+                $scope.working = false;
             },
             error: function(violation) {
                 $scope.violations = {};
@@ -307,6 +311,7 @@ function AddToBasketController($scope, basket, addToBasketPresenter) {
                     }, {});
                 });
                 if (addToBasketPresenter.error) addToBasketPresenter.error({$scope:$scope, violations:violation, id:id});
+                $scope.working = false;
             }
         })
     };
