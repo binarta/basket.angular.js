@@ -273,6 +273,7 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
             basket.render(function (it) {
                 $scope.items = it.items;
                 $scope.additionalCharges = it.additionalCharges;
+                $scope.itemTotal = it.itemTotal;
                 $scope.subTotal = it.price;
             });
         });

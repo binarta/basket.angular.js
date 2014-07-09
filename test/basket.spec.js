@@ -452,6 +452,7 @@ describe('basket', function () {
                     presenter({
                         items: 'items',
                         additionalCharges: 'additional-charges',
+                        itemTotal: 'item-total',
                         price: 'sub-total'
                     })
                 },
@@ -478,6 +479,7 @@ describe('basket', function () {
                 it('expose basket state on scope', function () {
                     expect(scope.items).toEqual('items');
                     expect(scope.additionalCharges).toEqual('additional-charges');
+                    expect(scope.itemTotal).toEqual('item-total');
                     expect(scope.subTotal).toEqual('sub-total');
                 });
             });
