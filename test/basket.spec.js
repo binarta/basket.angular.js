@@ -1,7 +1,24 @@
+var addressSelection, ctx;
+
+angular.module('basket.stubs', [])
+    .factory('usecaseAdapterFactory', function () {
+        return function ($scope, success) {
+            ctx = {};
+            ctx.$scope = $scope;
+            ctx.success = success;
+            return ctx;
+        }
+    })
+    .factory('addressSelection', function () {
+        addressSelection = jasmine.createSpyObj('addressSelection', ['view', 'clear']);
+        return addressSelection;
+    });
+
 describe('basket', function () {
     var fixture, ctrl, scope, dispatcher, registry, location;
     var isIteminStock = jasmine.createSpy('isIteminStock');
 
+    beforeEach(module('basket.stubs'));
     beforeEach(module('basket'));
     beforeEach(module('config'));
     beforeEach(module('notifications'));
@@ -49,20 +66,20 @@ describe('basket', function () {
 
                 beforeEach(function () {
                     item = {id: 'sale-id', price: 100, quantity: 2};
-                    fixture.basket.add({item:item, success:success, error:error});
+                    fixture.basket.add({item: item, success: success, error: error});
                 });
 
-                it('validate the order', inject(function(validateOrder) {
+                it('validate the order', inject(function (validateOrder) {
                     expect(validateOrder.calls[0].args[0]).toEqual({});
                     expect(validateOrder.calls[0].args[1].data).toEqual({
                         items: [
-                            {id:'sale-id', price:100, quantity:2}
+                            {id: 'sale-id', price: 100, quantity: 2}
                         ]
                     });
                 }));
 
-                describe('on succesful validation', function() {
-                    beforeEach(inject(function(validateOrder) {
+                describe('on succesful validation', function () {
+                    beforeEach(inject(function (validateOrder) {
                         validateOrder.calls[0].args[1].success();
                     }));
 
@@ -82,17 +99,17 @@ describe('basket', function () {
                         expect(fixture.basket.subTotal()).toEqual(200);
                     });
 
-                    it('success callback has been called', function() {
+                    it('success callback has been called', function () {
                         expect(success.calls[0]).toBeDefined();
                     });
 
                     describe('repeatedly', function () {
                         beforeEach(function () {
-                            fixture.basket.add({item:item});
+                            fixture.basket.add({item: item});
                         });
 
-                        describe('with success', function() {
-                            beforeEach(inject(function(validateOrder) {
+                        describe('with success', function () {
+                            beforeEach(inject(function (validateOrder) {
                                 validateOrder.calls[1].args[1].success();
                             }));
 
@@ -107,18 +124,23 @@ describe('basket', function () {
                             });
                         });
 
-                        describe('with rejection', function() {
-                            beforeEach(inject(function(validateOrder) {
+                        describe('with rejection', function () {
+                            beforeEach(inject(function (validateOrder) {
                                 validateOrder.calls[1].args[0].violations = {
-                                    items:{}
+                                    items: {}
                                 };
-                                validateOrder.calls[1].args[0].violations.items[item.id] = {quantity:[{label:'upperbound', params:{boundary:0}}]};
+                                validateOrder.calls[1].args[0].violations.items[item.id] = {
+                                    quantity: [{
+                                        label: 'upperbound',
+                                        params: {boundary: 0}
+                                    }]
+                                };
                                 validateOrder.calls[1].args[1].error();
                             }));
 
-                            it('test', inject(function() {
+                            it('test', inject(function () {
                                 expect(fixture.basket.items()).toEqual([
-                                    {id:item.id, price:item.price, quantity:2}
+                                    {id: item.id, price: item.price, quantity: 2}
                                 ])
                             }));
                         });
@@ -127,9 +149,9 @@ describe('basket', function () {
                     describe('and any additional items', function () {
                         var item2;
 
-                        beforeEach(inject(function(validateOrder) {
+                        beforeEach(inject(function (validateOrder) {
                             item2 = {id: 'sale-id-2', price: 200, quantity: 1};
-                            fixture.basket.add({item:item2, success:success, error:error});
+                            fixture.basket.add({item: item2, success: success, error: error});
                             validateOrder.calls[1].args[1].success();
                         }));
 
@@ -155,7 +177,7 @@ describe('basket', function () {
                                 expect(fixture.order).toEqual('payload');
                             });
 
-                            it('test', inject(function(topicMessageDispatcherMock) {
+                            it('test', inject(function (topicMessageDispatcherMock) {
                                 ctx.success('payload');
                                 expect(topicMessageDispatcherMock['basket.rendered']).toEqual('ok');
                             }));
@@ -177,27 +199,29 @@ describe('basket', function () {
                             var updatedItem;
 
                             function resetSpies(spies) {
-                                spies.forEach(function(it){it.reset()});
+                                spies.forEach(function (it) {
+                                    it.reset()
+                                });
                             }
 
-                            beforeEach(inject(function(validateOrder) {
+                            beforeEach(inject(function (validateOrder) {
                                 resetSpies([success, error, validateOrder]);
                                 dispatcher['basket.refresh'] = undefined;
                                 updatedItem = {id: item.id, price: item.price, quantity: 10};
-                                fixture.basket.update({item:updatedItem});
+                                fixture.basket.update({item: updatedItem});
                             }));
 
-                            it('then validate the order', inject(function(validateOrder) {
+                            it('then validate the order', inject(function (validateOrder) {
                                 expect(validateOrder.calls[0].args[0]).toEqual({});
-                                expect(validateOrder.calls[0].args[1].data).toEqual({items:fixture.basket.items()})
+                                expect(validateOrder.calls[0].args[1].data).toEqual({items: fixture.basket.items()})
                             }));
 
-                            it('with the updated quantity', inject(function(validateOrder) {
+                            it('with the updated quantity', inject(function (validateOrder) {
                                 expect(validateOrder.calls[0].args[1].data.items[0]).toEqual(updatedItem);
                             }));
 
-                            describe('with success', function() {
-                                beforeEach(inject(function(validateOrder) {
+                            describe('with success', function () {
+                                beforeEach(inject(function (validateOrder) {
                                     validateOrder.calls[0].args[1].success();
                                 }));
 
@@ -213,16 +237,16 @@ describe('basket', function () {
                                     expect(dispatcher['basket.refresh']).toBeDefined();
                                 });
 
-                                describe('with success callback', function() {
-                                    beforeEach(inject(function(validateOrder) {
+                                describe('with success callback', function () {
+                                    beforeEach(inject(function (validateOrder) {
                                         resetSpies([success, error, validateOrder]);
                                         dispatcher['basket.refresh'] = undefined;
                                         updatedItem = {id: item.id, price: item.price, quantity: 10};
-                                        fixture.basket.update({item:updatedItem, success:success});
+                                        fixture.basket.update({item: updatedItem, success: success});
                                         validateOrder.calls[0].args[1].success();
                                     }));
 
-                                    it('success has been called', function() {
+                                    it('success has been called', function () {
                                         expect(success.calls[0]).toBeDefined();
                                     });
                                 });
@@ -230,7 +254,7 @@ describe('basket', function () {
                                 describe('to blank', function () {
                                     beforeEach(function () {
                                         updatedItem = {id: item.id, price: item.price, quantity: ''};
-                                        fixture.basket.update({item:updatedItem});
+                                        fixture.basket.update({item: updatedItem});
                                     });
 
                                     it('then quantity is unaffected', function () {
@@ -241,7 +265,7 @@ describe('basket', function () {
                                 describe('to zero', function () {
                                     beforeEach(function () {
                                         updatedItem = {id: item.id, price: item.price, quantity: 0};
-                                        fixture.basket.update({item:updatedItem});
+                                        fixture.basket.update({item: updatedItem});
                                     });
 
                                     it('then quantity is unaffected', function () {
@@ -250,32 +274,32 @@ describe('basket', function () {
                                 });
                             });
 
-                            describe('with rejection', function() {
-                                beforeEach(inject(function(validateOrder) {
+                            describe('with rejection', function () {
+                                beforeEach(inject(function (validateOrder) {
                                     validateOrder.calls[0].args[0].violations = {
                                         items: {
                                             'sale-id': {
-                                                quantity:[{label:'upperbound', params:{boundary:0}}]
+                                                quantity: [{label: 'upperbound', params: {boundary: 0}}]
                                             }
                                         }
                                     };
                                     validateOrder.calls[0].args[1].error();
                                 }));
 
-                                it('original values are retained', function() {
+                                it('original values are retained', function () {
                                     expect(fixture.basket.items()[0].quantity).toEqual(item.quantity);
                                 });
 
-                                describe('for different item', function() {
-                                    beforeEach(inject(function(validateOrder) {
+                                describe('for different item', function () {
+                                    beforeEach(inject(function (validateOrder) {
                                         validateOrder.reset();
                                         dispatcher['basket.refresh'] = undefined;
                                         updatedItem = {id: item.id, price: item.price, quantity: 10};
-                                        fixture.basket.update({item:updatedItem});
+                                        fixture.basket.update({item: updatedItem});
                                         validateOrder.calls[0].args[0].violations = {
                                             items: {
                                                 'sale-id-2': {
-                                                    quantity:[{label:'upperbound', params:{boundary:0}}]
+                                                    quantity: [{label: 'upperbound', params: {boundary: 0}}]
                                                 }
                                             }
                                         };
@@ -295,25 +319,25 @@ describe('basket', function () {
                                     });
                                 });
 
-                                describe('with rejection callback', function() {
-                                    beforeEach(inject(function(validateOrder) {
+                                describe('with rejection callback', function () {
+                                    beforeEach(inject(function (validateOrder) {
                                         resetSpies([success, error, validateOrder]);
                                         dispatcher['basket.refresh'] = undefined;
                                         updatedItem = {id: item.id, price: item.price, quantity: 10};
-                                        fixture.basket.update({item:updatedItem, error:error});
+                                        fixture.basket.update({item: updatedItem, error: error});
                                         validateOrder.calls[0].args[0].violations = {
                                             items: {
                                                 'sale-id': {
-                                                    quantity:[{label:'upperbound', params:{boundary:0}}]
+                                                    quantity: [{label: 'upperbound', params: {boundary: 0}}]
                                                 }
                                             }
                                         };
                                         validateOrder.calls[0].args[1].error();
                                     }));
 
-                                    it('then callback is executed', function() {
+                                    it('then callback is executed', function () {
                                         expect(error.calls[0].args[0]).toEqual({
-                                            quantity:[{label:'upperbound', params:{boundary:0}}]
+                                            quantity: [{label: 'upperbound', params: {boundary: 0}}]
                                         });
                                     })
                                 });
@@ -356,35 +380,45 @@ describe('basket', function () {
 
                 });
 
-                describe('on rejection', function() {
-                    beforeEach(inject(function(validateOrder) {
+                describe('on rejection', function () {
+                    beforeEach(inject(function (validateOrder) {
                         error.reset();
-                        validateOrder.calls[0].args[0].violations = {items:{}};
-                        validateOrder.calls[0].args[0].violations.items[item.id] = {quantity:{label:'upperbound', params:{boundary:0}}};
+                        validateOrder.calls[0].args[0].violations = {items: {}};
+                        validateOrder.calls[0].args[0].violations.items[item.id] = {
+                            quantity: {
+                                label: 'upperbound',
+                                params: {boundary: 0}
+                            }
+                        };
                         validateOrder.calls[0].args[1].error();
                     }));
 
-                    it('the basket remains empty', function() {
+                    it('the basket remains empty', function () {
                         expect(fixture.basket.items()).toEqual([]);
                     });
 
-                    it('error callback is executed', function() {
-                        expect(error.calls[0].args[0]).toEqual({quantity:{label:'upperbound', params:{boundary:0}}});
+                    it('error callback is executed', function () {
+                        expect(error.calls[0].args[0]).toEqual({
+                            quantity: {
+                                label: 'upperbound',
+                                params: {boundary: 0}
+                            }
+                        });
                     });
 
-                    describe('for different item', function() {
-                        beforeEach(inject(function(validateOrder) {
-                            fixture.basket.add({item:item, success:success, error:error});
+                    describe('for different item', function () {
+                        beforeEach(inject(function (validateOrder) {
+                            fixture.basket.add({item: item, success: success, error: error});
                             error.reset();
                             validateOrder.calls[0].args[0].violations = {
-                                items:{
-                                    'id-2':{quantity:[{label:'upperbound', params:{boundary:0}}]}
+                                items: {
+                                    'id-2': {quantity: [{label: 'upperbound', params: {boundary: 0}}]}
                                 }
                             };
                             validateOrder.calls[0].args[1].error();
                         }));
 
-                        it('error callback is not called', function() {
+                        it('error callback is not called', function () {
                             expect(error.calls[0]).toBeUndefined();
                         });
 
@@ -404,7 +438,7 @@ describe('basket', function () {
                             expect(fixture.basket.subTotal()).toEqual(200);
                         });
 
-                        it('success callback has been called', function() {
+                        it('success callback has been called', function () {
                             expect(success.calls[0]).toBeDefined();
                         });
                     });
@@ -416,7 +450,7 @@ describe('basket', function () {
 
                 beforeEach(function () {
                     item = {id: 'sale-id', price: 100, quantity: 0};
-                    fixture.basket.add({item:item});
+                    fixture.basket.add({item: item});
                 });
 
                 it('then the item is added to the item list', function () {
@@ -424,16 +458,16 @@ describe('basket', function () {
                 });
             });
 
-            describe('when rendering removed items', function() {
-                beforeEach(inject(function() {
-                    fixture.basket.add({item:{id:'item-1', quantity:1}});
-                    fixture.basket.add({item:{id:'item-2', quantity:1}});
+            describe('when rendering removed items', function () {
+                beforeEach(inject(function () {
+                    fixture.basket.add({item: {id: 'item-1', quantity: 1}});
+                    fixture.basket.add({item: {id: 'item-2', quantity: 1}});
                     onRender();
-                    ctx.success({items:[{id:'item-1'}]});
+                    ctx.success({items: [{id: 'item-1'}]});
                 }));
 
-                it('then removed item is removed from basket and localstorage', inject(function(localStorage) {
-                    expect(fixture.basket.items()).toEqual([{id:'item-1'}]);
+                it('then removed item is removed from basket and localstorage', inject(function (localStorage) {
+                    expect(fixture.basket.items()).toEqual([{id: 'item-1'}]);
                     expect(localStorage.basket).toEqual(JSON.stringify(fixture.basket.items()));
                 }));
             });
@@ -467,7 +501,11 @@ describe('basket', function () {
                 remove: fixture.remove,
                 refresh: fixture.refresh
             };
-            ctrl = $controller(ViewBasketController, {$scope: scope, basket: fixture.basket, updateBasketPresenter:fixture.updateBasketPresenter});
+            ctrl = $controller(ViewBasketController, {
+                $scope: scope,
+                basket: fixture.basket,
+                updateBasketPresenter: fixture.updateBasketPresenter
+            });
         }));
 
         ['app.start', 'basket.refresh'].forEach(function (notification) {
@@ -485,43 +523,43 @@ describe('basket', function () {
             });
         });
 
-        describe('on init', function() {
-            describe('with order validation enabled', function() {
-                beforeEach(function() {
-                    scope.init({validateOrder:true});
+        describe('on init', function () {
+            describe('with order validation enabled', function () {
+                beforeEach(function () {
+                    scope.init({validateOrder: true});
                 });
 
-                describe('on basket.rendered', function() {
-                    beforeEach(function() {
+                describe('on basket.rendered', function () {
+                    beforeEach(function () {
                         registry['basket.rendered']();
                     });
 
-                    it('scope is passed to order validation', inject(function(validateOrder) {
+                    it('scope is passed to order validation', inject(function (validateOrder) {
                         expect(validateOrder.calls[0].args[0]).toEqual(scope);
                     }));
 
-                    it('basket items are passed along', inject(function(validateOrder) {
+                    it('basket items are passed along', inject(function (validateOrder) {
                         expect(validateOrder.calls[0].args[1].data).toEqual({
                             items: fixture.basket.items()
                         })
                     }));
 
-                    describe('with error', function() {
-                        beforeEach(inject(function(validateOrder) {
+                    describe('with error', function () {
+                        beforeEach(inject(function (validateOrder) {
                             scope.violations = {
                                 items: {
                                     'id-1': {
-                                        quantity:[{label:'upperbound', params:{boundary:1}}]
+                                        quantity: [{label: 'upperbound', params: {boundary: 1}}]
                                     },
                                     'id-2': {
-                                        quantity:[{label:'lowerbound', params:{boundary:2}}]
+                                        quantity: [{label: 'lowerbound', params: {boundary: 2}}]
                                     }
                                 }
                             };
                             validateOrder.calls[0].args[1].error();
                         }));
 
-                        it('boundaries are extracted from violations and put on the scope', function() {
+                        it('boundaries are extracted from violations and put on the scope', function () {
                             expect(scope.violations).toEqual({
                                 items: {
                                     'id-1': {
@@ -531,7 +569,7 @@ describe('basket', function () {
                                     },
                                     'id-2': {
                                         quantity: {
-                                            lowerbound: {boundary:2}
+                                            lowerbound: {boundary: 2}
                                         }
                                     }
                                 }
@@ -549,54 +587,56 @@ describe('basket', function () {
             expect(fixture.clear).toHaveBeenCalled();
         });
 
-        describe('on update', function() {
+        describe('on update', function () {
             var updateItem = {};
             var items = [];
 
-            beforeEach(function() {
-                fixture.basket.items = function() {return items};
-                updateItem = {id:'I', quantity:5};
+            beforeEach(function () {
+                fixture.basket.items = function () {
+                    return items
+                };
+                updateItem = {id: 'I', quantity: 5};
                 scope.update(updateItem);
             });
 
-            it('update for item was called', function() {
-                expect(fixture.update.calls[0].args[0].item).toEqual({id:'I', quantity:5});
+            it('update for item was called', function () {
+                expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 5});
             });
 
-            describe('on success', function() {
-                beforeEach(function() {
+            describe('on success', function () {
+                beforeEach(function () {
                     fixture.update.calls[0].args[0].success();
                 });
 
-                it('violations are reset', function() {
+                it('violations are reset', function () {
                     expect(scope.violations).toEqual({});
                 });
 
-                it('presenter presents success', function() {
-                    expect(fixture.updateBasketPresenter.success.calls[0].args[0]).toEqual({$scope:scope});
+                it('presenter presents success', function () {
+                    expect(fixture.updateBasketPresenter.success.calls[0].args[0]).toEqual({$scope: scope});
                 })
             });
 
-            describe('on error', function() {
-                beforeEach(function() {
+            describe('on error', function () {
+                beforeEach(function () {
                     scope.violations = {
                         items: {
                             I2: {
                                 quantity: {
-                                    upperbound: {boundary:2}
+                                    upperbound: {boundary: 2}
                                 }
                             }
                         }
                     };
-                    items.push({id:'I', quantity:2}, {id:'I2', quantity:4});
+                    items.push({id: 'I', quantity: 2}, {id: 'I2', quantity: 4});
                     fixture.update.calls[0].args[0].error({
-                        quantity:[
-                            {label:'upperbound', params:{boundary:1}}
+                        quantity: [
+                            {label: 'upperbound', params: {boundary: 1}}
                         ]
                     });
                 });
 
-                it('violations are exposed on scope', function() {
+                it('violations are exposed on scope', function () {
                     expect(scope.violations).toEqual({
                         items: {
                             I: {
@@ -606,14 +646,14 @@ describe('basket', function () {
                             },
                             I2: {
                                 quantity: {
-                                    upperbound: {boundary:2}
+                                    upperbound: {boundary: 2}
                                 }
                             }
                         }
                     })
                 });
 
-                it('error class is exposed on scope', function() {
+                it('error class is exposed on scope', function () {
                     expect(scope.errorClassFor).toEqual({
                         I: {
                             quantity: 'error'
@@ -621,11 +661,11 @@ describe('basket', function () {
                     })
                 });
 
-                it('restore quantity to original value', function() {
+                it('restore quantity to original value', function () {
                     expect(updateItem.quantity).toEqual(5);
                 });
 
-                it('update basket presenter error handler was called', function() {
+                it('update basket presenter error handler was called', function () {
                     expect(fixture.updateBasketPresenter.error.calls[0].args[0]).toEqual({
                         $scope: scope,
                         item: updateItem
@@ -710,28 +750,34 @@ describe('basket', function () {
             items = [];
             fixture.basket = {
                 add: jasmine.createSpy('add'),
-                items: function() {return items}
+                items: function () {
+                    return items
+                }
             };
-            ctrl = $controller(AddToBasketController, {$scope: scope, basket: fixture.basket, addToBasketPresenter:fixture.addToBasketPresenter});
-            scope.item = {quantity:5};
+            ctrl = $controller(AddToBasketController, {
+                $scope: scope,
+                basket: fixture.basket,
+                addToBasketPresenter: fixture.addToBasketPresenter
+            });
+            scope.item = {quantity: 5};
         }));
 
-        describe('initially', function() {
-            it('controller is not working', function() {
+        describe('initially', function () {
+            it('controller is not working', function () {
                 expect(scope.working).toEqual(false);
             });
         });
 
-        describe('on submit', function() {
-            beforeEach(function() {
+        describe('on submit', function () {
+            beforeEach(function () {
                 fixture.sale = {
-                    id:'sale-id',
-                    price:100
+                    id: 'sale-id',
+                    price: 100
                 };
                 scope.submit(fixture.sale.id, fixture.sale.price);
             });
 
-            it('controller is working', function() {
+            it('controller is working', function () {
                 expect(scope.working).toEqual(true);
             });
 
@@ -743,30 +789,35 @@ describe('basket', function () {
                 });
             });
 
-            describe('with success', function() {
-                beforeEach(function() {
+            describe('with success', function () {
+                beforeEach(function () {
                     fixture.basket.add.calls[0].args[0].success();
                 });
 
-                it('controller is not working', function() {
+                it('controller is not working', function () {
                     expect(scope.working).toEqual(false);
                 });
 
-                it('presenter presents success', function() {
-                    expect(fixture.addToBasketPresenter.success.calls[0].args[0]).toEqual({$scope:scope});
+                it('presenter presents success', function () {
+                    expect(fixture.addToBasketPresenter.success.calls[0].args[0]).toEqual({$scope: scope});
                 })
             });
 
-            describe('with error', function() {
-                beforeEach(function() {
-                    fixture.basket.add.calls[0].args[0].error({quantity:[{label:'upperbound', params:{boundary:2}}]});
+            describe('with error', function () {
+                beforeEach(function () {
+                    fixture.basket.add.calls[0].args[0].error({
+                        quantity: [{
+                            label: 'upperbound',
+                            params: {boundary: 2}
+                        }]
+                    });
                 });
 
-                it('controller is not working', function() {
+                it('controller is not working', function () {
                     expect(scope.working).toEqual(false);
                 });
 
-                it('violation gets exposed on scope', function() {
+                it('violation gets exposed on scope', function () {
                     expect(scope.violations).toEqual({
                         quantity: {
                             upperbound: {
@@ -776,23 +827,23 @@ describe('basket', function () {
                     })
                 });
 
-                it('errorclass for is exposed', function() {
+                it('errorclass for is exposed', function () {
                     expect(scope.errorClassFor).toEqual({
                         quantity: 'error'
                     })
                 });
 
-                it('test', function() {
+                it('test', function () {
                     expect(fixture.addToBasketPresenter.error.calls[0].args[0]).toEqual({
                         $scope: scope,
-                        violations: {quantity:[{label:'upperbound', params:{boundary:2}}]},
+                        violations: {quantity: [{label: 'upperbound', params: {boundary: 2}}]},
                         id: 'sale-id'
                     })
                 })
             });
         });
 
-        describe('on submit with quantity', function() {
+        describe('on submit with quantity', function () {
             beforeEach(function () {
                 fixture.sale = {
                     id: 'sale-id',
@@ -812,25 +863,84 @@ describe('basket', function () {
         });
     });
 
+    describe('PlacePurchaseOrderService', function () {
+        var service;
+
+        beforeEach(inject(function (placePurchaseOrderService) {
+            service = placePurchaseOrderService;
+            scope.termsAndConditions = 'terms-and-conditions';
+            ctx = {};
+        }));
+
+        describe('given a locale', function () {
+            beforeEach(inject(function ($routeParams) {
+                $routeParams.locale = 'lang';
+            }));
+
+            describe('when placing an order request', function () {
+                var orderSuccessMsg;
+
+                beforeEach(inject(function (localStorage) {
+                    service({
+                        $scope: scope,
+                        request: {
+                            termsAndConditions: 'terms-and-conditions',
+                            provider: 'payment-provider',
+                            comment: 'comment',
+                            items: 'items',
+                            billing: 'billing',
+                            shipping: 'shipping'
+                        },
+                        success: function (it) {
+                            orderSuccessMsg = it;
+                        }
+                    });
+                }));
+
+                it('then perform rest call', inject(function (config, basket, restServiceHandler) {
+                    expect(restServiceHandler.calls[0].args[0]).toEqual(ctx);
+                    expect(ctx.$scope).toEqual(scope);
+                    expect(ctx.params.method).toEqual('PUT');
+                    expect(ctx.params.url).toEqual(config.baseUri + 'api/entity/purchase-order');
+                    expect(ctx.params.withCredentials).toEqual(true);
+                    expect(ctx.params.headers).toEqual({"Accept-Language": 'lang'});
+                    expect(ctx.params.data).toEqual({
+                        termsAndConditions: 'terms-and-conditions',
+                        provider: 'payment-provider',
+                        comment: 'comment',
+                        items: 'items',
+                        billing: 'billing',
+                        shipping: 'shipping',
+                        reportType: 'complex'
+                    });
+                }));
+
+                it('and accepted then execute success handler', function () {
+                    ctx.success('order-success-msg');
+                    expect(orderSuccessMsg).toEqual('order-success-msg');
+                });
+            });
+        });
+    });
+
     describe('PlacePurchaseOrderController', function () {
-        var ctx;
-        var addressSelection = jasmine.createSpyObj('addressSelection', ['view', 'clear']);
-        var _window = {};
+        var capturedRequest = {};
 
         beforeEach(inject(function ($controller) {
             scope.termsAndConditions = 'terms-and-conditions';
             ctx = {};
-            ctrl = $controller(PlacePurchaseOrderController, {addressSelection: addressSelection, $scope: scope, usecaseAdapterFactory: function ($scope, success) {
-                ctx.$scope = $scope;
-                ctx.success = success;
-                return ctx;
-            }, $window: _window})
+            ctrl = $controller(PlacePurchaseOrderController, {
+                $scope: scope,
+                placePurchaseOrderService: function (request) {
+                    capturedRequest = request;
+                }
+            })
         }));
 
         describe('given a basket with some items', function () {
             beforeEach(inject(function (basket) {
-                basket.add({item:{id: 'sale-1', price: 100, quantity: 2}});
-                basket.add({item:{id: 'sale-2', price: 200, quantity: 1}});
+                basket.add({item: {id: 'sale-1', price: 100, quantity: 2}});
+                basket.add({item: {id: 'sale-2', price: 200, quantity: 1}});
             }));
 
             describe('and a locale', function () {
@@ -855,14 +965,9 @@ describe('basket', function () {
                             scope.submit();
                         }));
 
-                        it('perform rest call', inject(function (config, basket, restServiceHandler) {
-                            expect(restServiceHandler.calls[0].args[0]).toEqual(ctx);
-                            expect(ctx.$scope).toEqual(scope);
-                            expect(ctx.params.method).toEqual('PUT');
-                            expect(ctx.params.url).toEqual(config.baseUri + 'api/entity/purchase-order');
-                            expect(ctx.params.withCredentials).toEqual(true);
-                            expect(ctx.params.headers).toEqual({"Accept-Language": 'lang'});
-                            expect(ctx.params.data).toEqual({
+                        it('place request', function () {
+                            expect(capturedRequest.$scope).toEqual(scope);
+                            expect(capturedRequest.request).toEqual({
                                 termsAndConditions: scope.termsAndConditions,
                                 provider: 'payment-provider',
                                 comment: 'comment',
@@ -877,20 +982,19 @@ describe('basket', function () {
                                 shipping: {
                                     label: 'shipping-label',
                                     addressee: 'shipping-addressee'
-                                },
-                                reportType: 'complex'
+                                }
                             });
-                        }));
+                        });
 
                         describe('success', function () {
                             beforeEach(function () {
                                 scope.locale = 'locale';
-                                ctx.success({});
+                                capturedRequest.success({});
                             });
 
                             describe('with an approval url', function () {
                                 beforeEach(function () {
-                                    ctx.success({approvalUrl: 'approval-url'});
+                                    capturedRequest.success({approvalUrl: 'approval-url'});
                                 });
 
                                 it('redirect to approval url', function () {
@@ -924,7 +1028,7 @@ describe('basket', function () {
                     });
 
                     it('address data is empty string', function () {
-                        expect(ctx.params.data).toEqual({
+                        expect(capturedRequest.request).toEqual({
                             termsAndConditions: scope.termsAndConditions,
                             items: [
                                 {id: 'sale-1', quantity: 2},
@@ -937,8 +1041,7 @@ describe('basket', function () {
                             shipping: {
                                 label: '',
                                 addressee: ''
-                            },
-                            reportType: 'complex'
+                            }
                         });
                     });
                 });
@@ -999,17 +1102,17 @@ describe('basket', function () {
 });
 
 angular.module('mocks', [])
-    .factory('validateOrder', function() {
+    .factory('validateOrder', function () {
         return jasmine.createSpy('validateOrder');
     });
 
-angular.module('fakes', []).factory('ngRegisterTopicHandler', function(topicRegistry) {
-    return function(scope, topic, handler) {
+angular.module('fakes', []).factory('ngRegisterTopicHandler', function (topicRegistry) {
+    return function (scope, topic, handler) {
         if (topic) topicRegistry.subscribe(topic, handler);
         else {
             var args = scope;
             if (args.executeHandlerOnce) {
-                var callback = function() {
+                var callback = function () {
                     topicRegistry.unsubscribe(args.topic, callback);
                     args.handler();
                 };

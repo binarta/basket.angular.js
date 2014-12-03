@@ -2,16 +2,23 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', 'validateOrder', LocalStorageBasketFactory])
     .factory('addToBasketPresenter', [AddToBasketPresenterFactory])
     .factory('updateBasketPresenter', [UpdateBasketPresenterFactory])
+    .factory('placePurchaseOrderService', ['usecaseAdapterFactory', 'addressSelection', 'config', '$routeParams', 'restServiceHandler', PlacePurchaseOrderServiceFactory])
     .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', ViewBasketController])
-    .controller('PlacePurchaseOrderController', ['$scope', '$routeParams', 'config', 'basket', 'usecaseAdapterFactory', 'restServiceHandler', '$location', 'addressSelection', 'localStorage', '$window', PlacePurchaseOrderController])
+    .controller('PlacePurchaseOrderController', ['$scope', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
     .config(['$routeProvider', function ($routeProvider) {
         $routeProvider
             .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'})
-            .when('/payment-approval', {templateUrl: 'partials/shop/approval.html', controller: 'RedirectToApprovalUrlController'})
-            .when('/:locale/payment-approval', {templateUrl: 'partials/shop/approval.html', controller: 'RedirectToApprovalUrlController'});
+            .when('/payment-approval', {
+                templateUrl: 'partials/shop/approval.html',
+                controller: 'RedirectToApprovalUrlController'
+            })
+            .when('/:locale/payment-approval', {
+                templateUrl: 'partials/shop/approval.html',
+                controller: 'RedirectToApprovalUrlController'
+            });
     }]);
 
 function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher, restServiceHandler, validateOrder) {
@@ -55,7 +62,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     }
 
     function append(it) {
-        basket.push({id:it.id, price:it.price, quantity:it.quantity});
+        basket.push({id: it.id, price: it.price, quantity: it.quantity});
     }
 
     function raiseRefreshNotification() {
@@ -67,7 +74,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     }
 
     function removeItem(toRemove) {
-        var idx = basket.reduce(function(p,c,i) {
+        var idx = basket.reduce(function (p, c, i) {
             return c.id == toRemove.id ? i : p;
         }, -1);
         basket.splice(idx, 1);
@@ -82,16 +89,19 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                 if (it.error) it.error(violationOnScopeFor(scope, it.item.id));
             } else success();
         }
+
         function violationOnScopeFor(scope, id) {
             return scope.violations.items[id];
         }
+
         function validate(scope, success, error) {
             validateOrder(scope, {
-                data:{items:basket},
+                data: {items: basket},
                 success: success,
-                error:error
+                error: error
             })
         }
+
         function onSuccess(it, topic) {
             flush();
             raiseRefreshNotification();
@@ -99,16 +109,16 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
             if (it.success) it.success();
         }
 
-        this.refresh = function() {
+        this.refresh = function () {
             rehydrate();
         };
         this.add = function (it) {
             var scope = {};
-            var success = function() {
+            var success = function () {
                 onSuccess(it, 'basket.item.added');
             };
 
-            var error = function() {
+            var error = function () {
                 onError(scope, it, revertAdd, success);
             };
 
@@ -125,10 +135,10 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
         };
         this.update = function (it) {
             var scope = {};
-            var success = function() {
+            var success = function () {
                 onSuccess(it);
             };
-            var error = function() {
+            var error = function () {
                 onError(scope, it, rehydrate, success);
             };
             if (isQuantified(it.item)) {
@@ -165,7 +175,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                         })
                     }
                 },
-                success: function(payload) {
+                success: function (payload) {
                     basket = payload.items;
                     flush();
                     presenter(payload);
@@ -187,18 +197,18 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
 function ViewBasketController($scope, basket, topicRegistry, $location, validateOrder, updateBasketPresenter, ngRegisterTopicHandler) {
     var config = {};
 
-    $scope.init = function(args) {
+    $scope.init = function (args) {
         config.validateOrder = args.validateOrder;
     };
 
     $scope.update = function (it) {
         basket.update({
-            item:it,
-            success:function() {
+            item: it,
+            success: function () {
                 $scope.violations = {};
-                if (updateBasketPresenter.success) updateBasketPresenter.success({$scope:$scope});
+                if (updateBasketPresenter.success) updateBasketPresenter.success({$scope: $scope});
             },
-            error: function(violation) {
+            error: function (violation) {
                 function init() {
                     if (!$scope.violations) $scope.violations = {};
                     if (!$scope.violations.items) $scope.violations.items = {};
@@ -208,14 +218,14 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
                 }
 
                 init();
-                Object.keys(violation).forEach(function(field) {
+                Object.keys(violation).forEach(function (field) {
                     $scope.errorClassFor[it.id][field] = 'error';
-                    $scope.violations.items[it.id][field] = violation[field].reduce(function(p,c) {
+                    $scope.violations.items[it.id][field] = violation[field].reduce(function (p, c) {
                         p[c.label] = c.params;
                         return p;
                     }, {});
                 });
-                if (updateBasketPresenter.error) updateBasketPresenter.error({$scope:$scope, item:it});
+                if (updateBasketPresenter.error) updateBasketPresenter.error({$scope: $scope, item: it});
             }
         });
     };
@@ -240,23 +250,23 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
     };
 
     ngRegisterTopicHandler({
-        executeHandlerOnce:true,
-        scope:$scope,
-        topic:'basket.rendered',
-        handler:function() {
+        executeHandlerOnce: true,
+        scope: $scope,
+        topic: 'basket.rendered',
+        handler: function () {
             if (config.validateOrder) {
                 validateOrder($scope, {
                     data: {
                         items: basket.items()
                     },
-                    error: function() {
+                    error: function () {
                         var violations = $scope.violations;
 
-                        $scope.violations = {items:{}};
-                        Object.keys(violations.items).forEach(function(id) {
+                        $scope.violations = {items: {}};
+                        Object.keys(violations.items).forEach(function (id) {
                             $scope.violations.items[id] = {};
-                            Object.keys(violations.items[id]).forEach(function(field) {
-                                $scope.violations.items[id][field] = violations.items[id][field].reduce(function(p,c) {
+                            Object.keys(violations.items[id]).forEach(function (field) {
+                                $scope.violations.items[id][field] = violations.items[id][field].reduce(function (p, c) {
                                     p[c.label] = c.params;
                                     return p;
                                 }, {})
@@ -292,26 +302,30 @@ function AddToBasketController($scope, basket, addToBasketPresenter) {
         $scope.quantity = quantity;
     };
 
-    $scope.submit = function(id, price) {
+    $scope.submit = function (id, price) {
         $scope.working = true;
 
         basket.add({
             item: {id: id, price: price, quantity: $scope.quantity},
-            success: function() {
-                if (addToBasketPresenter.success) addToBasketPresenter.success({$scope:$scope});
+            success: function () {
+                if (addToBasketPresenter.success) addToBasketPresenter.success({$scope: $scope});
                 $scope.working = false;
             },
-            error: function(violation) {
+            error: function (violation) {
                 $scope.violations = {};
                 $scope.errorClassFor = {};
-                Object.keys(violation).forEach(function(field) {
+                Object.keys(violation).forEach(function (field) {
                     $scope.errorClassFor[field] = 'error';
-                    $scope.violations[field] = violation[field].reduce(function(p,c) {
+                    $scope.violations[field] = violation[field].reduce(function (p, c) {
                         p[c.label] = c.params;
                         return p;
                     }, {});
                 });
-                if (addToBasketPresenter.error) addToBasketPresenter.error({$scope:$scope, violations:violation, id:id});
+                if (addToBasketPresenter.error) addToBasketPresenter.error({
+                    $scope: $scope,
+                    violations: violation,
+                    id: id
+                });
                 $scope.working = false;
             }
         })
@@ -322,12 +336,21 @@ function AddToBasketPresenterFactory() {
     return {}
 }
 
-function PlacePurchaseOrderController($scope, $routeParams, config, basket, usecaseAdapterFactory, restServiceHandler, $location, addressSelection, localStorage, $window) {
-    $scope.submit = function () {
+function PlacePurchaseOrderServiceFactory(usecaseAdapterFactory, addressSelection, config, $routeParams, restServiceHandler) {
+    return function (args) {
+        var $scope = args.$scope;
+
         var ctx = usecaseAdapterFactory($scope);
 
         var billing = addressSelection.view('billing');
         var shipping = addressSelection.view('shipping');
+
+        var data = {};
+        Object.keys(args.request).forEach(function (k) {
+            data[k] = args.request[k];
+        });
+        data.reportType = 'complex';
+
         ctx.params = {
             method: 'PUT',
             url: config.baseUri + 'api/entity/purchase-order',
@@ -335,7 +358,20 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
             headers: {
                 'Accept-Language': $routeParams.locale
             },
-            data: {
+            data: data
+        };
+        ctx.success = args.success;
+        restServiceHandler(ctx);
+    }
+}
+
+function PlacePurchaseOrderController($scope, basket, $location, addressSelection, localStorage, placePurchaseOrderService) {
+    $scope.submit = function () {
+        var billing = addressSelection.view('billing');
+        var shipping = addressSelection.view('shipping');
+        placePurchaseOrderService({
+            $scope: $scope,
+            request: {
                 termsAndConditions: $scope.termsAndConditions,
                 provider: localStorage.provider,
                 comment: $scope.comment,
@@ -349,19 +385,17 @@ function PlacePurchaseOrderController($scope, $routeParams, config, basket, usec
                 shipping: {
                     label: shipping.label || '',
                     addressee: shipping.addressee || ''
-                },
-                reportType: 'complex'
+                }
+            },
+            success: function (payload) {
+                if (payload.approvalUrl) {
+                    $location.search('url', payload.approvalUrl);
+                    $location.path(($scope.locale || '') + '/payment-approval');
+                } else $location.path(($scope.locale || '') + '/order-confirmation');
+                basket.clear();
+                addressSelection.clear();
             }
-        };
-        ctx.success = function (payload) {
-            if (payload.approvalUrl) {
-                $location.search('url', payload.approvalUrl);
-                $location.path(($scope.locale || '') + '/payment-approval');
-            } else $location.path(($scope.locale || '') + '/order-confirmation');
-            basket.clear();
-            addressSelection.clear();
-        };
-        restServiceHandler(ctx);
+        });
     }
 }
 
