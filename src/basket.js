@@ -13,11 +13,11 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
             .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'})
             .when('/payment-approval', {
                 templateUrl: 'partials/shop/approval.html',
-                controller: 'RedirectToApprovalUrlController'
+                controller: ['$scope', '$window', '$location', RedirectToApprovalUrlController]
             })
             .when('/:locale/payment-approval', {
                 templateUrl: 'partials/shop/approval.html',
-                controller: 'RedirectToApprovalUrlController'
+                controller: ['$scope', '$window', '$location', RedirectToApprovalUrlController]
             });
     }]);
 
