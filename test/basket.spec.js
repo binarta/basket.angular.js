@@ -36,6 +36,32 @@ describe('basket', function () {
         isIteminStock.reset();
     }));
 
+    describe('on module installation', function() {
+        var run;
+
+        beforeEach(inject(function(topicRegistry, topicMessageDispatcher, config) {
+            var $run = angular.module('basket')._runBlocks[0];
+            run = $run[$run.length - 1];
+            run(topicRegistry, topicMessageDispatcher, config)
+        }));
+
+        it('on basket.item.added pipe to system.success', inject(function(topicRegistryMock, topicMessageDispatcherMock) {
+            topicRegistryMock['basket.item.added']();
+
+            expect(topicMessageDispatcherMock['system.success']).toEqual({
+                code:'basket.item.added',
+                default:'Item added to basket.'
+            })
+        }));
+
+        it('when configured to not fire notification handler is not installed', inject(function(topicRegistry, topicMessageDispatcher, topicRegistryMock) {
+            topicRegistryMock['basket.item.added'] = undefined;
+            run(topicRegistry, topicMessageDispatcher, {notifications:{basket:{'basket.item.added':false}}});
+
+            expect(topicRegistryMock['basket.item.added']).toBeUndefined();
+        }));
+    });
+
     describe('basket', function () {
         describe('given a basket reference', function () {
             var ctx;

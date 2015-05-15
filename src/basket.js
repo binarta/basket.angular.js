@@ -19,6 +19,19 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
                 templateUrl: 'partials/shop/approval.html',
                 controller: ['$scope', '$window', '$location', RedirectToApprovalUrlController]
             });
+    }])
+    .run(['topicRegistry', 'topicMessageDispatcher', 'config', function(registry, dispatcher, config) {
+        function shouldInstallListenerFor(topic) {
+            return !config || !config.notifications || !config.notifications.basket || config.notifications.basket[topic] != false;
+        }
+
+        if (shouldInstallListenerFor('basket.item.added'))
+            registry.subscribe('basket.item.added', function () {
+                dispatcher.fire('system.success', {
+                    code: 'basket.item.added',
+                    default: 'Item added to basket.'
+                })
+            });
     }]);
 
 function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher, restServiceHandler, validateOrder) {
