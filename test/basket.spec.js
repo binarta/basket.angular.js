@@ -85,6 +85,19 @@ describe('basket', function () {
                 });
             });
 
+            it('expose coupon code', inject(function(localStorage) {
+                expect(fixture.basket.couponCode()).toBeUndefined();
+                fixture.basket.couponCode('1234');
+                expect(fixture.basket.couponCode()).toEqual('1234');
+                expect(JSON.parse(localStorage.basket).coupon).toEqual('1234');
+            }));
+
+            it('restore coupon code from local storage', inject(function(localStorage) {
+                localStorage.basket = JSON.stringify({items:[], coupon:'1234'});
+                fixture.basket.refresh();
+                expect(fixture.basket.couponCode()).toEqual('1234');
+            }));
+
             describe('when adding an item to the basket', function () {
                 var item;
                 var error = jasmine.createSpy('error');
@@ -218,7 +231,7 @@ describe('basket', function () {
                         });
 
                         it('are flushed', inject(function (localStorage) {
-                            expect(localStorage.basket).toEqual(JSON.stringify([item, item2]));
+                            expect(localStorage.basket).toEqual(JSON.stringify({items:[item, item2]}));
                         }));
 
                         describe('and updating an item', function () {
@@ -256,7 +269,7 @@ describe('basket', function () {
                                 });
 
                                 it('then updates are flushed', inject(function (localStorage) {
-                                    expect(localStorage.basket).toEqual(JSON.stringify([updatedItem, item2]));
+                                    expect(localStorage.basket).toEqual(JSON.stringify({items:[updatedItem, item2]}));
                                 }));
 
                                 it('then a basket.refresh notification is raised', function () {
@@ -337,7 +350,7 @@ describe('basket', function () {
                                     });
 
                                     it('then updates are flushed', inject(function (localStorage) {
-                                        expect(localStorage.basket).toEqual(JSON.stringify([updatedItem, item2]));
+                                        expect(localStorage.basket).toEqual(JSON.stringify({items:[updatedItem, item2]}));
                                     }));
 
                                     it('then a basket.refresh notification is raised', function () {
@@ -378,7 +391,7 @@ describe('basket', function () {
                             });
 
                             it('then removals are flushed', inject(function (localStorage) {
-                                expect(localStorage.basket).toEqual(JSON.stringify([item2]));
+                                expect(localStorage.basket).toEqual(JSON.stringify({items:[item2]}));
                             }));
 
                             it('then a basket.refresh notification is raised', function () {
@@ -494,7 +507,7 @@ describe('basket', function () {
 
                 it('then removed item is removed from basket and localstorage', inject(function (localStorage) {
                     expect(fixture.basket.items()).toEqual([{id: 'item-1'}]);
-                    expect(localStorage.basket).toEqual(JSON.stringify(fixture.basket.items()));
+                    expect(localStorage.basket).toEqual(JSON.stringify({items:fixture.basket.items()}));
                 }));
             });
         });

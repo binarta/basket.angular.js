@@ -42,7 +42,9 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     }
 
     function initialize() {
-        basket = [];
+        basket = {
+            items:[]
+        };
         flush();
     }
 
@@ -55,13 +57,13 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     }
 
     function contains(it) {
-        return basket.reduce(function (p, c) {
+        return basket.items.reduce(function (p, c) {
             return p || c.id == it.id;
         }, false)
     }
 
     function findItemById(id) {
-        return basket.reduce(function (p, c) {
+        return basket.items.reduce(function (p, c) {
             return p || (c.id == id ? c : null)
         }, null)
     }
@@ -75,7 +77,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     }
 
     function append(it) {
-        basket.push({id: it.id, price: it.price, quantity: it.quantity});
+        basket.items.push({id: it.id, price: it.price, quantity: it.quantity});
     }
 
     function raiseRefreshNotification() {
@@ -87,10 +89,10 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     }
 
     function removeItem(toRemove) {
-        var idx = basket.reduce(function (p, c, i) {
+        var idx = basket.items.reduce(function (p, c, i) {
             return c.id == toRemove.id ? i : p;
         }, -1);
-        basket.splice(idx, 1);
+        basket.items.splice(idx, 1);
     }
 
     return new function () {
@@ -109,7 +111,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
 
         function validate(scope, success, error) {
             validateOrder(scope, {
-                data: {items: basket},
+                data: {items: basket.items},
                 success: success,
                 error: error
             })
@@ -165,15 +167,15 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
             raiseRefreshNotification();
         };
         this.items = function () {
-            return basket;
+            return basket.items;
         };
         this.subTotal = function () {
             var calculate = function () {
-                return basket.reduce(function (sum, it) {
+                return basket.items.reduce(function (sum, it) {
                     return sum + (it.price * it.quantity)
                 }, 0);
             };
-            return basket ? calculate() : 0;
+            return basket.items ? calculate() : 0;
         };
         this.render = function (presenter) {
             restServiceHandler({
@@ -189,7 +191,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                     }
                 },
                 success: function (payload) {
-                    basket = payload.items;
+                    basket.items = payload.items;
                     flush();
                     presenter(payload);
                     topicMessageDispatcher.fire('basket.rendered', 'ok');
@@ -203,6 +205,13 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
         this.clear = function () {
             initialize();
             raiseRefreshNotification();
+        };
+        this.couponCode = function(code) {
+            if(code) {
+                basket.coupon = code;
+                flush();
+            }
+            return basket.coupon;
         }
     };
 }
