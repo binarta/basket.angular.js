@@ -36,27 +36,27 @@ describe('basket', function () {
         isIteminStock.reset();
     }));
 
-    describe('on module installation', function() {
+    describe('on module installation', function () {
         var run;
 
-        beforeEach(inject(function(topicRegistry, topicMessageDispatcher, config) {
+        beforeEach(inject(function (topicRegistry, topicMessageDispatcher, config) {
             var $run = angular.module('basket')._runBlocks[0];
             run = $run[$run.length - 1];
             run(topicRegistry, topicMessageDispatcher, config)
         }));
 
-        it('on basket.item.added pipe to system.success', inject(function(topicRegistryMock, topicMessageDispatcherMock) {
+        it('on basket.item.added pipe to system.success', inject(function (topicRegistryMock, topicMessageDispatcherMock) {
             topicRegistryMock['basket.item.added']();
 
             expect(topicMessageDispatcherMock['system.success']).toEqual({
-                code:'basket.item.added',
-                default:'Item added to basket.'
+                code: 'basket.item.added',
+                default: 'Item added to basket.'
             })
         }));
 
-        it('when configured to not fire notification handler is not installed', inject(function(topicRegistry, topicMessageDispatcher, topicRegistryMock) {
+        it('when configured to not fire notification handler is not installed', inject(function (topicRegistry, topicMessageDispatcher, topicRegistryMock) {
             topicRegistryMock['basket.item.added'] = undefined;
-            run(topicRegistry, topicMessageDispatcher, {notifications:{basket:{'basket.item.added':false}}});
+            run(topicRegistry, topicMessageDispatcher, {notifications: {basket: {'basket.item.added': false}}});
 
             expect(topicRegistryMock['basket.item.added']).toBeUndefined();
         }));
@@ -85,15 +85,15 @@ describe('basket', function () {
                 });
             });
 
-            it('expose coupon code', inject(function(localStorage) {
+            it('expose coupon code', inject(function (localStorage) {
                 expect(fixture.basket.couponCode()).toBeUndefined();
                 fixture.basket.couponCode('1234');
                 expect(fixture.basket.couponCode()).toEqual('1234');
                 expect(JSON.parse(localStorage.basket).coupon).toEqual('1234');
             }));
 
-            it('restore coupon code from local storage', inject(function(localStorage) {
-                localStorage.basket = JSON.stringify({items:[], coupon:'1234'});
+            it('restore coupon code from local storage', inject(function (localStorage) {
+                localStorage.basket = JSON.stringify({items: [], coupon: '1234'});
                 fixture.basket.refresh();
                 expect(fixture.basket.couponCode()).toEqual('1234');
             }));
@@ -185,6 +185,13 @@ describe('basket', function () {
                         });
                     });
 
+                    it('add with configuration', inject(function(validateOrder) {
+                        var item2 = {id: 'sale-id-2', price: 200, quantity: 1, configuration:{x:'y'}};
+                        fixture.basket.add({item: item2, success: success, error: error});
+                        validateOrder.calls[1].args[1].success();
+                        expect(fixture.basket.items()[1].configuration).toEqual({x:'y'});
+                    }));
+
                     describe('and any additional items', function () {
                         var item2;
 
@@ -231,7 +238,7 @@ describe('basket', function () {
                         });
 
                         it('are flushed', inject(function (localStorage) {
-                            expect(localStorage.basket).toEqual(JSON.stringify({items:[item, item2]}));
+                            expect(localStorage.basket).toEqual(JSON.stringify({items: [item, item2]}));
                         }));
 
                         describe('and updating an item', function () {
@@ -269,7 +276,7 @@ describe('basket', function () {
                                 });
 
                                 it('then updates are flushed', inject(function (localStorage) {
-                                    expect(localStorage.basket).toEqual(JSON.stringify({items:[updatedItem, item2]}));
+                                    expect(localStorage.basket).toEqual(JSON.stringify({items: [updatedItem, item2]}));
                                 }));
 
                                 it('then a basket.refresh notification is raised', function () {
@@ -350,7 +357,7 @@ describe('basket', function () {
                                     });
 
                                     it('then updates are flushed', inject(function (localStorage) {
-                                        expect(localStorage.basket).toEqual(JSON.stringify({items:[updatedItem, item2]}));
+                                        expect(localStorage.basket).toEqual(JSON.stringify({items: [updatedItem, item2]}));
                                     }));
 
                                     it('then a basket.refresh notification is raised', function () {
@@ -391,7 +398,7 @@ describe('basket', function () {
                             });
 
                             it('then removals are flushed', inject(function (localStorage) {
-                                expect(localStorage.basket).toEqual(JSON.stringify({items:[item2]}));
+                                expect(localStorage.basket).toEqual(JSON.stringify({items: [item2]}));
                             }));
 
                             it('then a basket.refresh notification is raised', function () {
@@ -507,7 +514,7 @@ describe('basket', function () {
 
                 it('then removed item is removed from basket and localstorage', inject(function (localStorage) {
                     expect(fixture.basket.items()).toEqual([{id: 'item-1'}]);
-                    expect(localStorage.basket).toEqual(JSON.stringify({items:fixture.basket.items()}));
+                    expect(localStorage.basket).toEqual(JSON.stringify({items: fixture.basket.items()}));
                 }));
             });
         });
@@ -523,6 +530,7 @@ describe('basket', function () {
             fixture.basket = {
                 render: function (presenter) {
                     presenter({
+                        couponCode: 'coupon-code',
                         items: 'items',
                         additionalCharges: 'additional-charges',
                         itemTotal: 'item-total',
@@ -555,6 +563,7 @@ describe('basket', function () {
 
                 it('expose basket state on scope', function () {
                     expect(scope.items).toEqual('items');
+                    expect(scope.couponCode).toEqual('coupon-code');
                     expect(scope.additionalCharges).toEqual('additional-charges');
                     expect(scope.itemTotal).toEqual('item-total');
                     expect(scope.subTotal).toEqual('sub-total');

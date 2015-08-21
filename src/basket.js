@@ -20,7 +20,7 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
                 controller: ['$scope', '$window', '$location', RedirectToApprovalUrlController]
             });
     }])
-    .run(['topicRegistry', 'topicMessageDispatcher', 'config', function(registry, dispatcher, config) {
+    .run(['topicRegistry', 'topicMessageDispatcher', 'config', function (registry, dispatcher, config) {
         function shouldInstallListenerFor(topic) {
             return !config || !config.notifications || !config.notifications.basket || config.notifications.basket[topic] != false;
         }
@@ -43,7 +43,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
 
     function initialize() {
         basket = {
-            items:[]
+            items: []
         };
         flush();
     }
@@ -77,7 +77,9 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     }
 
     function append(it) {
-        basket.items.push({id: it.id, price: it.price, quantity: it.quantity});
+        var item = {id: it.id, price: it.price, quantity: it.quantity};
+        if(it.configuration) item.configuration = it.configuration;
+        basket.items.push(item);
     }
 
     function raiseRefreshNotification() {
@@ -96,6 +98,8 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     }
 
     return new function () {
+        var self = this;
+
         if (isUninitialized()) initialize();
         rehydrate();
         function onError(scope, it, cb, success) {
@@ -193,11 +197,13 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                 success: function (payload) {
                     basket.items = payload.items;
                     flush();
+                    payload.couponCode = self.couponCode();
                     presenter(payload);
                     topicMessageDispatcher.fire('basket.rendered', 'ok');
                 }
             });
             presenter({
+                couponCode: this.couponCode(),
                 items: this.items(),
                 subTotal: this.subTotal()
             });
@@ -206,8 +212,8 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
             initialize();
             raiseRefreshNotification();
         };
-        this.couponCode = function(code) {
-            if(code) {
+        this.couponCode = function (code) {
+            if (code) {
                 basket.coupon = code;
                 flush();
             }
@@ -304,6 +310,7 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
         topicRegistry.subscribe(it, function () {
             basket.render(function (it) {
                 $scope.items = it.items;
+                $scope.couponCode = it.couponCode;
                 $scope.additionalCharges = it.additionalCharges;
                 $scope.itemTotal = it.itemTotal;
                 $scope.subTotal = it.price;
