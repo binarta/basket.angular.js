@@ -10,7 +10,7 @@ angular.module('basket.stubs', [])
         }
     })
     .factory('addressSelection', function () {
-        addressSelection = jasmine.createSpyObj('addressSelection', ['view', 'clear']);
+        addressSelection = jasmine.createSpyObj('addressSelection', ['view', 'clear', 'add']);
         return addressSelection;
     });
 
@@ -196,7 +196,7 @@ describe('basket', function () {
                         var item2;
 
                         beforeEach(inject(function (validateOrder) {
-                            item2 = {id: 'sale-id-2', price: 200, quantity: 1};
+                            item2 = {id: 'sale-id-2', price: 200, quantity: 1, configuration:{x:'y'}};
                             fixture.basket.add({item: item2, success: success, error: error});
                             validateOrder.calls[1].args[1].success();
                         }));
@@ -213,7 +213,7 @@ describe('basket', function () {
                                     namespace: config.namespace,
                                     items: [
                                         {id: 'sale-id', quantity: 2},
-                                        {id: 'sale-id-2', quantity: 1}
+                                        {id: 'sale-id-2', quantity: 1, configuration:{x:'y'}}
                                     ]
                                 });
                             }));
@@ -985,10 +985,20 @@ describe('basket', function () {
             })
         }));
 
+        it('set shipping address', function() {
+            ctrl.setShippingAddress({label:'L', addressee:'A'});
+            expect(addressSelection.add.calls[0].args[0]).toEqual('shipping', {label:'L', addressee:'A'});
+        });
+
+        it('set billing address', function() {
+            ctrl.setBillingAddress({label:'L', addressee:'A'});
+            expect(addressSelection.add.calls[0].args[0]).toEqual('billing', {label:'L', addressee:'A'});
+        });
+
         describe('given a basket with some items', function () {
             beforeEach(inject(function (basket) {
                 basket.add({item: {id: 'sale-1', price: 100, quantity: 2}});
-                basket.add({item: {id: 'sale-2', price: 200, quantity: 1}});
+                basket.add({item: {id: 'sale-2', price: 200, quantity: 1, configuration:{x:'y'}}});
             }));
 
             describe('and a locale', function () {
@@ -1021,7 +1031,35 @@ describe('basket', function () {
                                 comment: 'comment',
                                 items: [
                                     {id: 'sale-1', quantity: 2},
-                                    {id: 'sale-2', quantity: 1}
+                                    {id: 'sale-2', quantity: 1, configuration:{x:'y'}}
+                                ],
+                                billing: {
+                                    label: 'billing-label',
+                                    addressee: 'billing-addressee'
+                                },
+                                shipping: {
+                                    label: 'shipping-label',
+                                    addressee: 'shipping-addressee'
+                                }
+                            });
+                        });
+
+                        it('place request using form instead of scope', function() {
+                            scope.termsAndConditions = undefined;
+                            localStorage.provider = undefined;
+
+                            ctrl.form.termsAndConditions = 'terms-and-conditions';
+                            ctrl.setPaymentProvider('payment-provider');
+
+                            scope.submit();
+
+                            expect(capturedRequest.request).toEqual({
+                                termsAndConditions: 'terms-and-conditions',
+                                provider: 'payment-provider',
+                                comment: 'comment',
+                                items: [
+                                    {id: 'sale-1', quantity: 2},
+                                    {id: 'sale-2', quantity: 1, configuration:{x:'y'}}
                                 ],
                                 billing: {
                                     label: 'billing-label',
@@ -1080,7 +1118,7 @@ describe('basket', function () {
                             termsAndConditions: scope.termsAndConditions,
                             items: [
                                 {id: 'sale-1', quantity: 2},
-                                {id: 'sale-2', quantity: 1}
+                                {id: 'sale-2', quantity: 1, configuration:{x:'y'}}
                             ],
                             billing: {
                                 label: '',

@@ -190,7 +190,9 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                     data: {
                         namespace: config.namespace,
                         items: this.items().map(function (it) {
-                            return {id: it.id, quantity: it.quantity}
+                            var item = {id: it.id, quantity: it.quantity};
+                            if(it.configuration) item.configuration = it.configuration;
+                            return item
                         })
                     }
                 },
@@ -307,14 +309,18 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
     });
 
     ['app.start', 'basket.refresh'].forEach(function (it) {
-        topicRegistry.subscribe(it, function () {
-            basket.render(function (it) {
-                $scope.items = it.items;
-                $scope.couponCode = it.couponCode;
-                $scope.additionalCharges = it.additionalCharges;
-                $scope.itemTotal = it.itemTotal;
-                $scope.subTotal = it.price;
-            });
+        ngRegisterTopicHandler({
+            scope:$scope,
+            topic:it,
+            handler: function () {
+                basket.render(function (it) {
+                    $scope.items = it.items;
+                    $scope.couponCode = it.couponCode;
+                    $scope.additionalCharges = it.additionalCharges;
+                    $scope.itemTotal = it.itemTotal;
+                    $scope.subTotal = it.price;
+                });
+            }
         });
     });
 }
@@ -395,17 +401,35 @@ function PlacePurchaseOrderServiceFactory(usecaseAdapterFactory, addressSelectio
 }
 
 function PlacePurchaseOrderController($scope, basket, $location, addressSelection, localStorage, placePurchaseOrderService) {
+    var self = this;
+
+    this.form = {};
+
+    this.setShippingAddress = function(it) {
+        addressSelection.add('shipping', {label:it.label, addressee:it.addressee});
+    };
+
+    this.setBillingAddress = function(it) {
+        addressSelection.add('billing', {label:it.label, addressee:it.addressee});
+    };
+
+    this.setPaymentProvider = function(it) {
+        this.form.paymentProvider = it;
+    }
+
     $scope.submit = function () {
         var billing = addressSelection.view('billing');
         var shipping = addressSelection.view('shipping');
         placePurchaseOrderService({
             $scope: $scope,
             request: {
-                termsAndConditions: $scope.termsAndConditions,
-                provider: localStorage.provider,
+                termsAndConditions: $scope.termsAndConditions || self.form.termsAndConditions,
+                provider: localStorage.provider || self.form.paymentProvider,
                 comment: $scope.comment,
                 items: basket.items().map(function (it) {
-                    return {id: it.id, quantity: it.quantity}
+                    var item = {id: it.id, quantity: it.quantity};
+                    if(it.configuration) item.configuration = it.configuration;
+                    return item
                 }),
                 billing: {
                     label: billing.label || '',
