@@ -521,7 +521,9 @@ describe('basket', function () {
     });
 
     describe('ViewBasketController', function () {
-        beforeEach(inject(function ($controller) {
+        var $timeout;
+
+        beforeEach(inject(function ($controller, _$timeout_) {
             fixture.updateBasketPresenter = {success: jasmine.createSpy('success'), error: jasmine.createSpy('error')};
             fixture.refresh = jasmine.createSpy('refresh');
             fixture.clear = jasmine.createSpy('clear');
@@ -548,10 +550,12 @@ describe('basket', function () {
                 remove: fixture.remove,
                 refresh: fixture.refresh
             };
+            $timeout = _$timeout_;
             ctrl = $controller(ViewBasketController, {
                 $scope: scope,
                 basket: fixture.basket,
-                updateBasketPresenter: fixture.updateBasketPresenter
+                updateBasketPresenter: fixture.updateBasketPresenter,
+                $timeout: $timeout
             });
         }));
 
@@ -720,6 +724,170 @@ describe('basket', function () {
                     })
                 })
 
+            });
+        });
+
+        describe('on increase item quantity', function () {
+            var item;
+            var items = [
+                item
+            ];
+
+            beforeEach(function () {
+                item = {id:'I', quantity: 1};
+                fixture.basket.items = function () {
+                    return items
+                };
+                scope.increaseQuantity(item);
+                $timeout.flush();
+            });
+
+            it('quantity is increased', function () {
+                expect(item.quantity).toEqual(2);
+            });
+
+            it('prices are updated', function () {
+                expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 2});
+            });
+
+            describe('when increase quantity is called multiple times', function () {
+                beforeEach(function () {
+                    fixture.update.reset();
+                    item = {id:'I', quantity: 1};
+
+                    scope.increaseQuantity(item);
+                    scope.increaseQuantity(item);
+                    scope.increaseQuantity(item);
+                    scope.increaseQuantity(item);
+
+                    $timeout.flush();
+                });
+
+                it('prices are updated only once', function () {
+                    expect(fixture.update.calls.length).toEqual(1);
+                });
+
+                it('yet all increases are recorded', function () {
+                    expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 5});
+                });
+
+                it('set updatingPrices on scope', function () {
+                    expect(scope.updatingPrices).toBeTruthy();
+                });
+
+                describe('on update success', function () {
+                    beforeEach(function () {
+                        fixture.update.calls[0].args[0].success();
+                    });
+
+                    it('disable updatingPrices', function () {
+                        expect(scope.updatingPrices).toBeFalsy();
+                    });
+                });
+
+                describe('on update error', function () {
+                    beforeEach(function () {
+                        fixture.update.calls[0].args[0].error({
+                            quantity: [
+                                {label: 'upperbound', params: {boundary: 1}}
+                            ]
+                        });
+                    });
+
+                    it('disable updatingPrices', function () {
+                        expect(scope.updatingPrices).toBeFalsy();
+                    });
+                });
+            });
+        });
+
+        describe('on decrease item quantity', function () {
+            var item;
+            var items = [
+                item
+            ];
+
+            beforeEach(function () {
+                item = {id:'I', quantity: 10};
+                fixture.basket.items = function () {
+                    return items
+                };
+                scope.decreaseQuantity(item);
+                $timeout.flush();
+            });
+
+            it('quantity is increased', function () {
+                expect(item.quantity).toEqual(9);
+            });
+
+            it('prices are updated', function () {
+                expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 9});
+            });
+
+            describe('when increase quantity is called multiple times', function () {
+                beforeEach(function () {
+                    fixture.update.reset();
+                    item = {id:'I', quantity: 10};
+
+                    scope.decreaseQuantity(item);
+                    scope.decreaseQuantity(item);
+                    scope.decreaseQuantity(item);
+                    scope.decreaseQuantity(item);
+
+                    $timeout.flush();
+                });
+
+                it('prices are updated only once', function () {
+                    expect(fixture.update.calls.length).toEqual(1);
+                });
+
+                it('yet all increases are recorded', function () {
+                    expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 6});
+                });
+
+                it('set updatingPrices on scope', function () {
+                    expect(scope.updatingPrices).toBeTruthy();
+                });
+
+                describe('on update success', function () {
+                    beforeEach(function () {
+                        fixture.update.calls[0].args[0].success();
+                    });
+
+                    it('disable updatingPrices', function () {
+                        expect(scope.updatingPrices).toBeFalsy();
+                    });
+                });
+
+                describe('on update error', function () {
+                    beforeEach(function () {
+                        fixture.update.calls[0].args[0].error({
+                            quantity: [
+                                {label: 'upperbound', params: {boundary: 1}}
+                            ]
+                        });
+                    });
+
+                    it('disable updatingPrices', function () {
+                        expect(scope.updatingPrices).toBeFalsy();
+                    });
+                });
+            });
+
+            describe('do not decrease when 1', function () {
+                beforeEach(function () {
+                    scope.updatingPrices = false;
+                    fixture.update.reset();
+                    item = {id:'I', quantity: 1};
+
+                    scope.decreaseQuantity(item);
+                });
+
+                it('do nothing', function () {
+                    expect(item.quantity).toEqual(1);
+                    expect(fixture.update).not.toHaveBeenCalled();
+                    expect(scope.updatingPrices).toBeFalsy();
+                });
             });
         });
 

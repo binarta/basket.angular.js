@@ -4,7 +4,7 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .factory('updateBasketPresenter', [UpdateBasketPresenterFactory])
     .factory('placePurchaseOrderService', ['usecaseAdapterFactory', 'addressSelection', 'config', '$routeParams', 'restServiceHandler', PlacePurchaseOrderServiceFactory])
     .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', AddToBasketController])
-    .controller('ViewBasketController', ['$scope', 'basket', 'topicRegistry', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', ViewBasketController])
+    .controller('ViewBasketController', ['$scope', 'basket', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', '$timeout', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
@@ -224,7 +224,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     };
 }
 
-function ViewBasketController($scope, basket, topicRegistry, $location, validateOrder, updateBasketPresenter, ngRegisterTopicHandler) {
+function ViewBasketController($scope, basket, $location, validateOrder, updateBasketPresenter, ngRegisterTopicHandler, $timeout) {
     var config = {};
 
     $scope.init = function (args) {
@@ -237,6 +237,7 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
             success: function () {
                 $scope.violations = {};
                 if (updateBasketPresenter.success) updateBasketPresenter.success({$scope: $scope});
+                $scope.updatingPrices = false;
             },
             error: function (violation) {
                 function init() {
@@ -256,9 +257,31 @@ function ViewBasketController($scope, basket, topicRegistry, $location, validate
                     }, {});
                 });
                 if (updateBasketPresenter.error) updateBasketPresenter.error({$scope: $scope, item: it});
+                $scope.updatingPrices = false;
             }
         });
     };
+
+    $scope.increaseQuantity = function (it) {
+        it.quantity++;
+        updatePrices(it);
+    };
+
+    $scope.decreaseQuantity = function (it) {
+        if (it.quantity > 1) {
+            it.quantity--;
+            updatePrices(it);
+        }
+    };
+
+    var updatePricesTimeout;
+    function updatePrices(it) {
+        $scope.updatingPrices = true;
+        if (updatePricesTimeout) $timeout.cancel(updatePricesTimeout);
+        updatePricesTimeout = $timeout(function () {
+            $scope.update(it);
+        },300);
+    }
 
     $scope.remove = function (it) {
         basket.remove(it);
