@@ -1,6 +1,10 @@
 {
   "name": "binarta.basket.angular",
-  "main": "./src/basket.js",
+  "main": [
+    "./src/basket.js",
+    "./less/basket.less",
+    "./metadata-system.json"
+  ],
   "dependencies": {
     "angular": "1.3.*",
     "angular-route": "1.3.*"

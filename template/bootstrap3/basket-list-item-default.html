@@ -1,0 +1,58 @@
+<div class="bin-basket-item thumbnail clearfix">
+    <a class="item-image" ng-href="#!{{::localePrefix}}/view{{::item.id}}">
+        <img bin-image="carousels{{::item.id}}/0.img">
+    </a>
+
+    <div class="caption">
+        <h3 class="item-title" i18n code="{{::item.id}}">
+            {{var}}
+        </h3>
+
+        <div class="item-remove" i18n code="basket.remove.item.confirm" read-only>
+            <button class="btn btn-danger btn-sm" type="button"
+                    ng-click-confirm="remove(item)"
+                    confirm-message="{{::var}}">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+
+        <form ng-submit="update(item)">
+            <div class="form-group">
+                <div class="input-group">
+                    <input type="number" min="1" class="form-control" ng-model="item.quantity" ng-change="update(item)">
+                        <span class="input-group-btn">
+                            <button class="btn btn-default" type="button" ng-click="increaseQuantity(item)"
+                                    ng-disabled="working">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                            <button class="btn btn-default" type="button" ng-click="decreaseQuantity(item)"
+                                    ng-disabled="item.quantity < 2 || working">
+                                <i class="fa fa-minus"></i>
+                            </button>
+                        </span>
+                </div>
+            </div>
+        </form>
+
+        <table class="item-prices">
+            <tbody>
+            <tr>
+                <th i18n code="basket.item.price.label" read-only>
+                    {{::var}}
+                </th>
+                <td>
+                    <span class="item-price" catalog-item-price="item"></span>
+                </td>
+            </tr>
+            <tr ng-if="item.quantity > 1">
+                <th i18n code="basket.item.total.label" read-only>
+                    {{::var}}
+                </th>
+                <td>
+                    {{((item.price / 100) * item.quantity).toFixed(2) | currency}}
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,112 @@
+<section class="bin-basket" ng-controller="ViewBasketController" ng-init="init({validateOrder:true})">
+    <div class="container">
+        <div class="row">
+            <div class="col-xs-12 col-sm-10 col-sm-offset-1 col-lg-8 col-lg-offset-2">
+
+                <div class="bin-basket-items" ng-if="viewport.xs">
+                    <div class="row" ng-repeat="item in items track by item.id">
+                        <div class="col-xs-12">
+                            <ng-include src="'basket-list-item-default.html'"></ng-include>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bin-basket-items" ng-if="viewport.sm">
+                    <div bin-split-in-rows="items" columns="3">
+                        <div class="row" ng-repeat="row in rows track by row.id">
+                            <div class="col-sm-4" ng-repeat="item in row.items track by item.id">
+                                <ng-include src="'basket-list-item-default.html'"></ng-include>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bin-basket-items" ng-if="viewport.md || viewport.lg">
+                    <div bin-split-in-rows="items" columns="4">
+                        <div class="row" ng-repeat="row in rows track by row.id">
+                            <div class="col-md-3" ng-repeat="item in row.items track by item.id">
+                                <ng-include src="'basket-list-item-default.html'"></ng-include>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bin-basket-prices text-right">
+                    <div ng-if="updatingPrices">
+                        <div class="row">
+                            <div class="col-xs-8 col-sm-10" i18n code="basket.prices.subtotal.label" read-only>
+                                <strong>{{::var}}</strong>
+                            </div>
+                            <div class="col-xs-4 col-sm-2">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                        <div class="row" ng-repeat="item in additionalCharges">
+                            <div class="col-xs-8 col-sm-10" i18n code="basket.prices.{{::item.label}}.label" read-only>
+                                <strong>{{::var}}</strong>
+                            </div>
+                            <div class="col-xs-4 col-sm-2">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-8 col-sm-10" i18n code="basket.prices.total.label" read-only>
+                                <strong>{{::var}}</strong>
+                            </div>
+                            <div class="col-xs-4 col-sm-2">
+                                <div class="basket-total-price">
+                                    <i class="fa fa-spinner fa-spin"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div ng-if="!updatingPrices">
+                        <div class="row">
+                            <div class="col-xs-8 col-sm-10" i18n code="basket.prices.subtotal.label" read-only>
+                                <strong>{{::var}}</strong>
+                            </div>
+                            <div class="col-xs-4 col-sm-2">
+                                {{(itemTotal / 100).toFixed(2) | currency}}
+                            </div>
+                        </div>
+                        <div class="row" ng-repeat="item in additionalCharges">
+                            <div class="col-xs-8 col-sm-10" i18n code="basket.prices.{{::item.label}}.label" read-only>
+                                <strong>{{::var}}</strong>
+                            </div>
+                            <div class="col-xs-4 col-sm-2">
+                                {{item.value / 100 | currency}}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-8 col-sm-10" i18n code="basket.prices.total.label" read-only>
+                                <strong>{{::var}}</strong>
+                            </div>
+                            <div class="col-xs-4 col-sm-2">
+                                <div class="basket-total-price">
+                                    {{subTotal / 100 | currency}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <hr>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12 text-right">
+                        <a class="btn btn-success inline" ng-href="#!{{::localePrefix}}/checkout/address"
+                           ng-disabled="!items || items.length == 0 || violations.items"
+                           i18n code="basket.checkout.button" read-only>
+                            <i class="fa fa-caret-right fa-fw"></i> {{::var}}
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
