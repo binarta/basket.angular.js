@@ -182,6 +182,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
             return basket.items ? calculate() : 0;
         };
         this.render = function (presenter) {
+            var couponCode = this.couponCode();
             restServiceHandler({
                 params: {
                     method: 'POST',
@@ -192,6 +193,10 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
                         items: this.items().map(function (it) {
                             var item = {id: it.id, quantity: it.quantity};
                             if(it.configuration) item.configuration = it.configuration;
+                            if(couponCode) {
+                                item.couponCode = couponCode;
+                                couponCode = undefined;
+                            }
                             return item
                         })
                     }
@@ -438,11 +443,12 @@ function PlacePurchaseOrderController($scope, basket, $location, addressSelectio
 
     this.setPaymentProvider = function(it) {
         this.form.paymentProvider = it;
-    }
+    };
 
     $scope.submit = function () {
         var billing = addressSelection.view('billing');
         var shipping = addressSelection.view('shipping');
+        var couponCode = basket.couponCode();
         placePurchaseOrderService({
             $scope: $scope,
             request: {
@@ -452,6 +458,10 @@ function PlacePurchaseOrderController($scope, basket, $location, addressSelectio
                 items: basket.items().map(function (it) {
                     var item = {id: it.id, quantity: it.quantity};
                     if(it.configuration) item.configuration = it.configuration;
+                    if(couponCode) {
+                        item.couponCode = couponCode;
+                        couponCode = undefined;
+                    }
                     return item
                 }),
                 billing: {
