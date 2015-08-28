@@ -522,9 +522,9 @@ describe('basket', function () {
     });
 
     describe('ViewBasketController', function () {
-        var $timeout;
+        var $timeout, $routeParams;
 
-        beforeEach(inject(function ($controller, _$timeout_) {
+        beforeEach(inject(function ($controller, _$timeout_, _$routeParams_) {
             fixture.updateBasketPresenter = {success: jasmine.createSpy('success'), error: jasmine.createSpy('error')};
             fixture.refresh = jasmine.createSpy('refresh');
             fixture.clear = jasmine.createSpy('clear');
@@ -552,11 +552,13 @@ describe('basket', function () {
                 refresh: fixture.refresh
             };
             $timeout = _$timeout_;
+            $routeParams = _$routeParams_;
             ctrl = $controller(ViewBasketController, {
                 $scope: scope,
                 basket: fixture.basket,
                 updateBasketPresenter: fixture.updateBasketPresenter,
-                $timeout: $timeout
+                $timeout: $timeout,
+                $routeParams: $routeParams
             });
         }));
 
@@ -912,7 +914,7 @@ describe('basket', function () {
 
                 describe('and a locale', function () {
                     beforeEach(function () {
-                        scope.locale = 'lang';
+                        $routeParams.locale = 'lang';
                         scope.continue();
                     });
 
@@ -936,7 +938,7 @@ describe('basket', function () {
 
                 describe('and a locale', function () {
                     beforeEach(function () {
-                        scope.locale = 'lang';
+                        $routeParams.locale = 'lang';
                         scope.continue('/path');
                     });
 

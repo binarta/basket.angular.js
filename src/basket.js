@@ -4,7 +4,7 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .factory('updateBasketPresenter', [UpdateBasketPresenterFactory])
     .factory('placePurchaseOrderService', ['usecaseAdapterFactory', 'addressSelection', 'config', '$routeParams', 'restServiceHandler', PlacePurchaseOrderServiceFactory])
     .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', AddToBasketController])
-    .controller('ViewBasketController', ['$scope', 'basket', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', '$timeout', ViewBasketController])
+    .controller('ViewBasketController', ['$scope', 'basket', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', '$timeout', '$routeParams', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
@@ -229,7 +229,7 @@ function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher,
     };
 }
 
-function ViewBasketController($scope, basket, $location, validateOrder, updateBasketPresenter, ngRegisterTopicHandler, $timeout) {
+function ViewBasketController($scope, basket, $location, validateOrder, updateBasketPresenter, ngRegisterTopicHandler, $timeout, $routeParams) {
     var config = {};
 
     $scope.init = function (args) {
@@ -298,10 +298,10 @@ function ViewBasketController($scope, basket, $location, validateOrder, updateBa
 
     $scope.continue = function (path) {
         if ($location.search().redirectTo) {
-            $location.path(($scope.locale ? $scope.locale : '') + $location.search().redirectTo);
+            $location.path(($routeParams.locale ? $routeParams.locale : '') + $location.search().redirectTo);
             $location.search('redirectTo', null);
         } else if (path) {
-            $location.path(($scope.locale ? $scope.locale : '') + path);
+            $location.path(($routeParams.locale ? $routeParams.locale : '') + path);
         } else {
             $location.path('/');
         }
