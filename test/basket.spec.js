@@ -185,18 +185,19 @@ describe('basket', function () {
                         });
                     });
 
-                    it('add with configuration', inject(function(validateOrder) {
-                        var item2 = {id: 'sale-id-2', price: 200, quantity: 1, configuration:{x:'y'}};
+                    it('add with configuration', inject(function (validateOrder) {
+                        var item2 = {id: 'sale-id-2', price: 200, quantity: 1, configuration: {x: 'y'}};
                         fixture.basket.add({item: item2, success: success, error: error});
                         validateOrder.calls[1].args[1].success();
-                        expect(fixture.basket.items()[1].configuration).toEqual({x:'y'});
+                        expect(fixture.basket.items()[1].configuration).toEqual({x: 'y'});
                     }));
 
                     describe('and any additional items', function () {
                         var item2;
 
                         beforeEach(inject(function (validateOrder) {
-                            item2 = {id: 'sale-id-2', price: 200, quantity: 1, configuration:{x:'y'}};
+                            item2 = {id: 'sale-id-2', price: 200, quantity: 1, configuration: {x: 'y'}};
+                            fixture.basket.couponCode('coupon-code');
                             fixture.basket.add({item: item2, success: success, error: error});
                             validateOrder.calls[1].args[1].success();
                         }));
@@ -212,8 +213,8 @@ describe('basket', function () {
                                 expect(ctx.params.data).toEqual({
                                     namespace: config.namespace,
                                     items: [
-                                        {id: 'sale-id', quantity: 2},
-                                        {id: 'sale-id-2', quantity: 1, configuration:{x:'y'}}
+                                        {id: 'sale-id', quantity: 2, couponCode:'coupon-code'},
+                                        {id: 'sale-id-2', quantity: 1, configuration: {x: 'y'}}
                                     ]
                                 });
                             }));
@@ -238,7 +239,7 @@ describe('basket', function () {
                         });
 
                         it('are flushed', inject(function (localStorage) {
-                            expect(localStorage.basket).toEqual(JSON.stringify({items: [item, item2]}));
+                            expect(localStorage.basket).toEqual(JSON.stringify({items: [item, item2], coupon:'coupon-code'}));
                         }));
 
                         describe('and updating an item', function () {
@@ -276,7 +277,7 @@ describe('basket', function () {
                                 });
 
                                 it('then updates are flushed', inject(function (localStorage) {
-                                    expect(localStorage.basket).toEqual(JSON.stringify({items: [updatedItem, item2]}));
+                                    expect(localStorage.basket).toEqual(JSON.stringify({items: [updatedItem, item2], coupon:'coupon-code'}));
                                 }));
 
                                 it('then a basket.refresh notification is raised', function () {
@@ -357,7 +358,7 @@ describe('basket', function () {
                                     });
 
                                     it('then updates are flushed', inject(function (localStorage) {
-                                        expect(localStorage.basket).toEqual(JSON.stringify({items: [updatedItem, item2]}));
+                                        expect(localStorage.basket).toEqual(JSON.stringify({items: [updatedItem, item2], coupon:'coupon-code'}));
                                     }));
 
                                     it('then a basket.refresh notification is raised', function () {
@@ -398,7 +399,7 @@ describe('basket', function () {
                             });
 
                             it('then removals are flushed', inject(function (localStorage) {
-                                expect(localStorage.basket).toEqual(JSON.stringify({items: [item2]}));
+                                expect(localStorage.basket).toEqual(JSON.stringify({items: [item2], coupon:'coupon-code'}));
                             }));
 
                             it('then a basket.refresh notification is raised', function () {
@@ -734,7 +735,7 @@ describe('basket', function () {
             ];
 
             beforeEach(function () {
-                item = {id:'I', quantity: 1};
+                item = {id: 'I', quantity: 1};
                 fixture.basket.items = function () {
                     return items
                 };
@@ -753,7 +754,7 @@ describe('basket', function () {
             describe('when increase quantity is called multiple times', function () {
                 beforeEach(function () {
                     fixture.update.reset();
-                    item = {id:'I', quantity: 1};
+                    item = {id: 'I', quantity: 1};
 
                     scope.increaseQuantity(item);
                     scope.increaseQuantity(item);
@@ -808,7 +809,7 @@ describe('basket', function () {
             ];
 
             beforeEach(function () {
-                item = {id:'I', quantity: 10};
+                item = {id: 'I', quantity: 10};
                 fixture.basket.items = function () {
                     return items
                 };
@@ -827,7 +828,7 @@ describe('basket', function () {
             describe('when increase quantity is called multiple times', function () {
                 beforeEach(function () {
                     fixture.update.reset();
-                    item = {id:'I', quantity: 10};
+                    item = {id: 'I', quantity: 10};
 
                     scope.decreaseQuantity(item);
                     scope.decreaseQuantity(item);
@@ -878,7 +879,7 @@ describe('basket', function () {
                 beforeEach(function () {
                     scope.updatingPrices = false;
                     fixture.update.reset();
-                    item = {id:'I', quantity: 1};
+                    item = {id: 'I', quantity: 1};
 
                     scope.decreaseQuantity(item);
                 });
@@ -1153,20 +1154,20 @@ describe('basket', function () {
             })
         }));
 
-        it('set shipping address', function() {
-            ctrl.setShippingAddress({label:'L', addressee:'A'});
-            expect(addressSelection.add.calls[0].args[0]).toEqual('shipping', {label:'L', addressee:'A'});
+        it('set shipping address', function () {
+            ctrl.setShippingAddress({label: 'L', addressee: 'A'});
+            expect(addressSelection.add.calls[0].args[0]).toEqual('shipping', {label: 'L', addressee: 'A'});
         });
 
-        it('set billing address', function() {
-            ctrl.setBillingAddress({label:'L', addressee:'A'});
-            expect(addressSelection.add.calls[0].args[0]).toEqual('billing', {label:'L', addressee:'A'});
+        it('set billing address', function () {
+            ctrl.setBillingAddress({label: 'L', addressee: 'A'});
+            expect(addressSelection.add.calls[0].args[0]).toEqual('billing', {label: 'L', addressee: 'A'});
         });
 
         describe('given a basket with some items', function () {
             beforeEach(inject(function (basket) {
                 basket.add({item: {id: 'sale-1', price: 100, quantity: 2}});
-                basket.add({item: {id: 'sale-2', price: 200, quantity: 1, configuration:{x:'y'}}});
+                basket.add({item: {id: 'sale-2', price: 200, quantity: 1, configuration: {x: 'y'}}});
             }));
 
             describe('and a locale', function () {
@@ -1199,7 +1200,7 @@ describe('basket', function () {
                                 comment: 'comment',
                                 items: [
                                     {id: 'sale-1', quantity: 2},
-                                    {id: 'sale-2', quantity: 1, configuration:{x:'y'}}
+                                    {id: 'sale-2', quantity: 1, configuration: {x: 'y'}}
                                 ],
                                 billing: {
                                     label: 'billing-label',
@@ -1212,32 +1213,60 @@ describe('basket', function () {
                             });
                         });
 
-                        it('place request using form instead of scope', function() {
-                            scope.termsAndConditions = undefined;
-                            localStorage.provider = undefined;
+                        describe('place request using form instead of scope', function () {
+                            beforeEach(function () {
+                                scope.termsAndConditions = undefined;
+                                localStorage.provider = undefined;
 
-                            ctrl.form.termsAndConditions = 'terms-and-conditions';
-                            ctrl.setPaymentProvider('payment-provider');
-
-                            scope.submit();
-
-                            expect(capturedRequest.request).toEqual({
-                                termsAndConditions: 'terms-and-conditions',
-                                provider: 'payment-provider',
-                                comment: 'comment',
-                                items: [
-                                    {id: 'sale-1', quantity: 2},
-                                    {id: 'sale-2', quantity: 1, configuration:{x:'y'}}
-                                ],
-                                billing: {
-                                    label: 'billing-label',
-                                    addressee: 'billing-addressee'
-                                },
-                                shipping: {
-                                    label: 'shipping-label',
-                                    addressee: 'shipping-addressee'
-                                }
+                                ctrl.form.termsAndConditions = 'terms-and-conditions';
+                                ctrl.setPaymentProvider('payment-provider');
                             });
+
+                            it('without coupon', function () {
+                                scope.submit();
+
+                                expect(capturedRequest.request).toEqual({
+                                    termsAndConditions: 'terms-and-conditions',
+                                    provider: 'payment-provider',
+                                    comment: 'comment',
+                                    items: [
+                                        {id: 'sale-1', quantity: 2},
+                                        {id: 'sale-2', quantity: 1, configuration: {x: 'y'}}
+                                    ],
+                                    billing: {
+                                        label: 'billing-label',
+                                        addressee: 'billing-addressee'
+                                    },
+                                    shipping: {
+                                        label: 'shipping-label',
+                                        addressee: 'shipping-addressee'
+                                    }
+                                });
+                            });
+
+                            it('with coupon', inject(function (basket) {
+                                basket.couponCode('coupon-code');
+
+                                scope.submit();
+
+                                expect(capturedRequest.request).toEqual({
+                                    termsAndConditions: 'terms-and-conditions',
+                                    provider: 'payment-provider',
+                                    comment: 'comment',
+                                    items: [
+                                        {id: 'sale-1', quantity: 2, couponCode:'coupon-code'},
+                                        {id: 'sale-2', quantity: 1, configuration: {x: 'y'}}
+                                    ],
+                                    billing: {
+                                        label: 'billing-label',
+                                        addressee: 'billing-addressee'
+                                    },
+                                    shipping: {
+                                        label: 'shipping-label',
+                                        addressee: 'shipping-addressee'
+                                    }
+                                });
+                            }));
                         });
 
                         describe('success', function () {
@@ -1286,7 +1315,7 @@ describe('basket', function () {
                             termsAndConditions: scope.termsAndConditions,
                             items: [
                                 {id: 'sale-1', quantity: 2},
-                                {id: 'sale-2', quantity: 1, configuration:{x:'y'}}
+                                {id: 'sale-2', quantity: 1, configuration: {x: 'y'}}
                             ],
                             billing: {
                                 label: '',
