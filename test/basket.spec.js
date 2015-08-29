@@ -522,9 +522,15 @@ describe('basket', function () {
     });
 
     describe('ViewBasketController', function () {
-        var $timeout, $routeParams;
+        var $timeout, $routeParams, items;
 
         beforeEach(inject(function ($controller, _$timeout_, _$routeParams_) {
+            items = [
+                {quantity: 1},
+                {quantity: 1},
+                {quantity: 5}
+            ];
+
             fixture.updateBasketPresenter = {success: jasmine.createSpy('success'), error: jasmine.createSpy('error')};
             fixture.refresh = jasmine.createSpy('refresh');
             fixture.clear = jasmine.createSpy('clear');
@@ -534,7 +540,7 @@ describe('basket', function () {
                 render: function (presenter) {
                     presenter({
                         couponCode: 'coupon-code',
-                        items: 'items',
+                        items: items,
                         additionalCharges: 'additional-charges',
                         itemTotal: 'item-total',
                         price: 'sub-total'
@@ -569,7 +575,8 @@ describe('basket', function () {
                 });
 
                 it('expose basket state on scope', function () {
-                    expect(scope.items).toEqual('items');
+                    expect(scope.items).toEqual(items);
+                    expect(scope.quantity).toEqual(7);
                     expect(scope.couponCode).toEqual('coupon-code');
                     expect(scope.additionalCharges).toEqual('additional-charges');
                     expect(scope.itemTotal).toEqual('item-total');

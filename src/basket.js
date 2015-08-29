@@ -343,6 +343,9 @@ function ViewBasketController($scope, basket, $location, validateOrder, updateBa
             handler: function () {
                 basket.render(function (it) {
                     $scope.items = it.items;
+                    $scope.quantity = it.items.reduce(function (p, c) {
+                        return p + c.quantity || 1;
+                    }, 0);
                     $scope.couponCode = it.couponCode;
                     $scope.additionalCharges = it.additionalCharges;
                     $scope.itemTotal = it.itemTotal;
