@@ -8,6 +8,17 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .controller('PlacePurchaseOrderController', ['$scope', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
+    .directive('basketLink', function () {
+        return {
+            restrict: 'A',
+            template: '<a ng-href="#!{{localePrefix}}/basket" ' +
+            'ng-controller="ViewBasketController"' +
+            'i18n code="basket.{{quantity == 1 ? \'item\' : \'items\'}}.label" read-only>' +
+            '<i class="fa fa-shopping-cart fa-fw"></i>' +
+            '({{quantity}} {{var}}) {{(subTotal || 0) / 100 | currency}}' +
+            '</a>'
+        };
+    })
     .config(['$routeProvider', function ($routeProvider) {
         $routeProvider
             .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'})
