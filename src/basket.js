@@ -11,11 +11,13 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
     .directive('basketLink', function () {
         return {
             restrict: 'A',
-            template: '<a ng-href="#!{{localePrefix}}/basket" ' +
-            'ng-controller="ViewBasketController"' +
-            'i18n code="basket.{{quantity == 1 ? \'item\' : \'items\'}}.label" read-only>' +
+            controller: 'ViewBasketController',
+            scope: {
+                basketLink: '@'
+            },
+            template: '<a ng-href="#!{{localePrefix}}/basket" ng-if="quantity > 0">' +
             '<i class="fa fa-shopping-cart fa-fw"></i>' +
-            '({{quantity}} {{var}}) {{(subTotal || 0) / 100 | currency}}' +
+            '({{quantity}}) <span ng-if="basketLink == \'showSubTotal\'">{{(subTotal || 0) / 100 | currency}}</span>' +
             '</a>'
         };
     })
