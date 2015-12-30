@@ -33,7 +33,7 @@ describe('basket', function () {
         dispatcher = topicMessageDispatcherMock;
         registry = topicRegistryMock;
         location = $location;
-        isIteminStock.reset();
+        isIteminStock.calls.reset();
     }));
 
     describe('on module installation', function () {
@@ -69,7 +69,7 @@ describe('basket', function () {
                 fixture.basket.render(function (it) {
                     fixture.order = it;
                 });
-                ctx = restServiceHandler.calls[0].args[0];
+                ctx = restServiceHandler.calls.argsFor(0)[0];
             });
 
             beforeEach(inject(function (basket) {
@@ -109,8 +109,8 @@ describe('basket', function () {
                 });
 
                 it('validate the order', inject(function (validateOrder) {
-                    expect(validateOrder.calls[0].args[0]).toEqual({});
-                    expect(validateOrder.calls[0].args[1].data).toEqual({
+                    expect(validateOrder.calls.argsFor(0)[0]).toEqual({});
+                    expect(validateOrder.calls.argsFor(0)[1].data).toEqual({
                         items: [
                             {id: 'sale-id', price: 100, quantity: 2}
                         ]
@@ -119,7 +119,7 @@ describe('basket', function () {
 
                 describe('on succesful validation', function () {
                     beforeEach(inject(function (validateOrder) {
-                        validateOrder.calls[0].args[1].success();
+                        validateOrder.calls.argsFor(0)[1].success();
                     }));
 
                     it('then the item is added to the item list', function () {
@@ -139,7 +139,7 @@ describe('basket', function () {
                     });
 
                     it('success callback has been called', function () {
-                        expect(success.calls[0]).toBeDefined();
+                        expect(success.calls.count() > 0).toEqual(true);
                     });
 
                     describe('repeatedly', function () {
@@ -149,7 +149,7 @@ describe('basket', function () {
 
                         describe('with success', function () {
                             beforeEach(inject(function (validateOrder) {
-                                validateOrder.calls[1].args[1].success();
+                                validateOrder.calls.argsFor(1)[1].success();
                             }));
 
                             it('causes increments', function () {
@@ -165,16 +165,16 @@ describe('basket', function () {
 
                         describe('with rejection', function () {
                             beforeEach(inject(function (validateOrder) {
-                                validateOrder.calls[1].args[0].violations = {
+                                validateOrder.calls.argsFor(1)[0].violations = {
                                     items: {}
                                 };
-                                validateOrder.calls[1].args[0].violations.items[item.id] = {
+                                validateOrder.calls.argsFor(1)[0].violations.items[item.id] = {
                                     quantity: [{
                                         label: 'upperbound',
                                         params: {boundary: 0}
                                     }]
                                 };
-                                validateOrder.calls[1].args[1].error();
+                                validateOrder.calls.argsFor(1)[1].error();
                             }));
 
                             it('test', inject(function () {
@@ -188,7 +188,7 @@ describe('basket', function () {
                     it('add with configuration', inject(function (validateOrder) {
                         var item2 = {id: 'sale-id-2', price: 200, quantity: 1, configuration: {x: 'y'}};
                         fixture.basket.add({item: item2, success: success, error: error});
-                        validateOrder.calls[1].args[1].success();
+                        validateOrder.calls.argsFor(1)[1].success();
                         expect(fixture.basket.items()[1].configuration).toEqual({x: 'y'});
                     }));
 
@@ -199,7 +199,7 @@ describe('basket', function () {
                             item2 = {id: 'sale-id-2', price: 200, quantity: 1, configuration: {x: 'y'}};
                             fixture.basket.couponCode('coupon-code');
                             fixture.basket.add({item: item2, success: success, error: error});
-                            validateOrder.calls[1].args[1].success();
+                            validateOrder.calls.argsFor(1)[1].success();
                         }));
 
 
@@ -247,7 +247,7 @@ describe('basket', function () {
 
                             function resetSpies(spies) {
                                 spies.forEach(function (it) {
-                                    it.reset()
+                                    it.calls.reset()
                                 });
                             }
 
@@ -259,17 +259,17 @@ describe('basket', function () {
                             }));
 
                             it('then validate the order', inject(function (validateOrder) {
-                                expect(validateOrder.calls[0].args[0]).toEqual({});
-                                expect(validateOrder.calls[0].args[1].data).toEqual({items: fixture.basket.items()})
+                                expect(validateOrder.calls.argsFor(0)[0]).toEqual({});
+                                expect(validateOrder.calls.argsFor(0)[1].data).toEqual({items: fixture.basket.items()})
                             }));
 
                             it('with the updated quantity', inject(function (validateOrder) {
-                                expect(validateOrder.calls[0].args[1].data.items[0]).toEqual(updatedItem);
+                                expect(validateOrder.calls.argsFor(0)[1].data.items[0]).toEqual(updatedItem);
                             }));
 
                             describe('with success', function () {
                                 beforeEach(inject(function (validateOrder) {
-                                    validateOrder.calls[0].args[1].success();
+                                    validateOrder.calls.argsFor(0)[1].success();
                                 }));
 
                                 it('then quantity is updated', function () {
@@ -290,11 +290,11 @@ describe('basket', function () {
                                         dispatcher['basket.refresh'] = undefined;
                                         updatedItem = {id: item.id, price: item.price, quantity: 10};
                                         fixture.basket.update({item: updatedItem, success: success});
-                                        validateOrder.calls[0].args[1].success();
+                                        validateOrder.calls.argsFor(0)[1].success();
                                     }));
 
                                     it('success has been called', function () {
-                                        expect(success.calls[0]).toBeDefined();
+                                        expect(success.calls.count() > 0).toEqual(true);
                                     });
                                 });
 
@@ -323,14 +323,14 @@ describe('basket', function () {
 
                             describe('with rejection', function () {
                                 beforeEach(inject(function (validateOrder) {
-                                    validateOrder.calls[0].args[0].violations = {
+                                    validateOrder.calls.argsFor(0)[0].violations = {
                                         items: {
                                             'sale-id': {
                                                 quantity: [{label: 'upperbound', params: {boundary: 0}}]
                                             }
                                         }
                                     };
-                                    validateOrder.calls[0].args[1].error();
+                                    validateOrder.calls.argsFor(0)[1].error();
                                 }));
 
                                 it('original values are retained', function () {
@@ -339,18 +339,18 @@ describe('basket', function () {
 
                                 describe('for different item', function () {
                                     beforeEach(inject(function (validateOrder) {
-                                        validateOrder.reset();
+                                        validateOrder.calls.reset();
                                         dispatcher['basket.refresh'] = undefined;
                                         updatedItem = {id: item.id, price: item.price, quantity: 10};
                                         fixture.basket.update({item: updatedItem});
-                                        validateOrder.calls[0].args[0].violations = {
+                                        validateOrder.calls.argsFor(0)[0].violations = {
                                             items: {
                                                 'sale-id-2': {
                                                     quantity: [{label: 'upperbound', params: {boundary: 0}}]
                                                 }
                                             }
                                         };
-                                        validateOrder.calls[0].args[1].error();
+                                        validateOrder.calls.argsFor(0)[1].error();
                                     }));
 
                                     it('then quantity is updated', function () {
@@ -372,18 +372,18 @@ describe('basket', function () {
                                         dispatcher['basket.refresh'] = undefined;
                                         updatedItem = {id: item.id, price: item.price, quantity: 10};
                                         fixture.basket.update({item: updatedItem, error: error});
-                                        validateOrder.calls[0].args[0].violations = {
+                                        validateOrder.calls.argsFor(0)[0].violations = {
                                             items: {
                                                 'sale-id': {
                                                     quantity: [{label: 'upperbound', params: {boundary: 0}}]
                                                 }
                                             }
                                         };
-                                        validateOrder.calls[0].args[1].error();
+                                        validateOrder.calls.argsFor(0)[1].error();
                                     }));
 
                                     it('then callback is executed', function () {
-                                        expect(error.calls[0].args[0]).toEqual({
+                                        expect(error.calls.argsFor(0)[0]).toEqual({
                                             quantity: [{label: 'upperbound', params: {boundary: 0}}]
                                         });
                                     })
@@ -429,15 +429,15 @@ describe('basket', function () {
 
                 describe('on rejection', function () {
                     beforeEach(inject(function (validateOrder) {
-                        error.reset();
-                        validateOrder.calls[0].args[0].violations = {items: {}};
-                        validateOrder.calls[0].args[0].violations.items[item.id] = {
+                        error.calls.reset();
+                        validateOrder.calls.argsFor(0)[0].violations = {items: {}};
+                        validateOrder.calls.argsFor(0)[0].violations.items[item.id] = {
                             quantity: {
                                 label: 'upperbound',
                                 params: {boundary: 0}
                             }
                         };
-                        validateOrder.calls[0].args[1].error();
+                        validateOrder.calls.argsFor(0)[1].error();
                     }));
 
                     it('the basket remains empty', function () {
@@ -445,7 +445,7 @@ describe('basket', function () {
                     });
 
                     it('error callback is executed', function () {
-                        expect(error.calls[0].args[0]).toEqual({
+                        expect(error.calls.argsFor(0)[0]).toEqual({
                             quantity: {
                                 label: 'upperbound',
                                 params: {boundary: 0}
@@ -456,17 +456,17 @@ describe('basket', function () {
                     describe('for different item', function () {
                         beforeEach(inject(function (validateOrder) {
                             fixture.basket.add({item: item, success: success, error: error});
-                            error.reset();
-                            validateOrder.calls[0].args[0].violations = {
+                            error.calls.reset();
+                            validateOrder.calls.argsFor(0)[0].violations = {
                                 items: {
                                     'id-2': {quantity: [{label: 'upperbound', params: {boundary: 0}}]}
                                 }
                             };
-                            validateOrder.calls[0].args[1].error();
+                            validateOrder.calls.argsFor(0)[1].error();
                         }));
 
                         it('error callback is not called', function () {
-                            expect(error.calls[0]).toBeUndefined();
+                            expect(error.calls.count()).toEqual(0);
                         });
 
                         it('then the item is added to the item list', function () {
@@ -486,7 +486,7 @@ describe('basket', function () {
                         });
 
                         it('success callback has been called', function () {
-                            expect(success.calls[0]).toBeDefined();
+                            expect(success.calls.count() > 0).toEqual(true);
                         });
                     });
                 });
@@ -597,11 +597,11 @@ describe('basket', function () {
                     });
 
                     it('scope is passed to order validation', inject(function (validateOrder) {
-                        expect(validateOrder.calls[0].args[0]).toEqual(scope);
+                        expect(validateOrder.calls.argsFor(0)[0]).toEqual(scope);
                     }));
 
                     it('basket items are passed along', inject(function (validateOrder) {
-                        expect(validateOrder.calls[0].args[1].data).toEqual({
+                        expect(validateOrder.calls.argsFor(0)[1].data).toEqual({
                             items: fixture.basket.items()
                         })
                     }));
@@ -618,7 +618,7 @@ describe('basket', function () {
                                     }
                                 }
                             };
-                            validateOrder.calls[0].args[1].error();
+                            validateOrder.calls.argsFor(0)[1].error();
                         }));
 
                         it('boundaries are extracted from violations and put on the scope', function () {
@@ -662,12 +662,12 @@ describe('basket', function () {
             });
 
             it('update for item was called', function () {
-                expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 5});
+                expect(fixture.update.calls.argsFor(0)[0].item).toEqual({id: 'I', quantity: 5});
             });
 
             describe('on success', function () {
                 beforeEach(function () {
-                    fixture.update.calls[0].args[0].success();
+                    fixture.update.calls.argsFor(0)[0].success();
                 });
 
                 it('violations are reset', function () {
@@ -675,7 +675,7 @@ describe('basket', function () {
                 });
 
                 it('presenter presents success', function () {
-                    expect(fixture.updateBasketPresenter.success.calls[0].args[0]).toEqual({$scope: scope});
+                    expect(fixture.updateBasketPresenter.success.calls.argsFor(0)[0]).toEqual({$scope: scope});
                 })
             });
 
@@ -691,7 +691,7 @@ describe('basket', function () {
                         }
                     };
                     items.push({id: 'I', quantity: 2}, {id: 'I2', quantity: 4});
-                    fixture.update.calls[0].args[0].error({
+                    fixture.update.calls.argsFor(0)[0].error({
                         quantity: [
                             {label: 'upperbound', params: {boundary: 1}}
                         ]
@@ -728,7 +728,7 @@ describe('basket', function () {
                 });
 
                 it('update basket presenter error handler was called', function () {
-                    expect(fixture.updateBasketPresenter.error.calls[0].args[0]).toEqual({
+                    expect(fixture.updateBasketPresenter.error.calls.argsFor(0)[0]).toEqual({
                         $scope: scope,
                         item: updateItem
                     })
@@ -757,12 +757,12 @@ describe('basket', function () {
             });
 
             it('prices are updated', function () {
-                expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 2});
+                expect(fixture.update.calls.argsFor(0)[0].item).toEqual({id: 'I', quantity: 2});
             });
 
             describe('when increase quantity is called multiple times', function () {
                 beforeEach(function () {
-                    fixture.update.reset();
+                    fixture.update.calls.reset();
                     item = {id: 'I', quantity: 1};
 
                     scope.increaseQuantity(item);
@@ -774,11 +774,11 @@ describe('basket', function () {
                 });
 
                 it('prices are updated only once', function () {
-                    expect(fixture.update.calls.length).toEqual(1);
+                    expect(fixture.update.calls.count()).toEqual(1);
                 });
 
                 it('yet all increases are recorded', function () {
-                    expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 5});
+                    expect(fixture.update.calls.argsFor(0)[0].item).toEqual({id: 'I', quantity: 5});
                 });
 
                 it('set updatingPrices on scope', function () {
@@ -787,7 +787,7 @@ describe('basket', function () {
 
                 describe('on update success', function () {
                     beforeEach(function () {
-                        fixture.update.calls[0].args[0].success();
+                        fixture.update.calls.argsFor(0)[0].success();
                     });
 
                     it('disable updatingPrices', function () {
@@ -797,7 +797,7 @@ describe('basket', function () {
 
                 describe('on update error', function () {
                     beforeEach(function () {
-                        fixture.update.calls[0].args[0].error({
+                        fixture.update.calls.argsFor(0)[0].error({
                             quantity: [
                                 {label: 'upperbound', params: {boundary: 1}}
                             ]
@@ -831,12 +831,12 @@ describe('basket', function () {
             });
 
             it('prices are updated', function () {
-                expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 9});
+                expect(fixture.update.calls.argsFor(0)[0].item).toEqual({id: 'I', quantity: 9});
             });
 
             describe('when increase quantity is called multiple times', function () {
                 beforeEach(function () {
-                    fixture.update.reset();
+                    fixture.update.calls.reset();
                     item = {id: 'I', quantity: 10};
 
                     scope.decreaseQuantity(item);
@@ -848,11 +848,11 @@ describe('basket', function () {
                 });
 
                 it('prices are updated only once', function () {
-                    expect(fixture.update.calls.length).toEqual(1);
+                    expect(fixture.update.calls.count()).toEqual(1);
                 });
 
                 it('yet all increases are recorded', function () {
-                    expect(fixture.update.calls[0].args[0].item).toEqual({id: 'I', quantity: 6});
+                    expect(fixture.update.calls.argsFor(0)[0].item).toEqual({id: 'I', quantity: 6});
                 });
 
                 it('set updatingPrices on scope', function () {
@@ -861,7 +861,7 @@ describe('basket', function () {
 
                 describe('on update success', function () {
                     beforeEach(function () {
-                        fixture.update.calls[0].args[0].success();
+                        fixture.update.calls.argsFor(0)[0].success();
                     });
 
                     it('disable updatingPrices', function () {
@@ -871,7 +871,7 @@ describe('basket', function () {
 
                 describe('on update error', function () {
                     beforeEach(function () {
-                        fixture.update.calls[0].args[0].error({
+                        fixture.update.calls.argsFor(0)[0].error({
                             quantity: [
                                 {label: 'upperbound', params: {boundary: 1}}
                             ]
@@ -887,7 +887,7 @@ describe('basket', function () {
             describe('do not decrease when 1', function () {
                 beforeEach(function () {
                     scope.updatingPrices = false;
-                    fixture.update.reset();
+                    fixture.update.calls.reset();
                     item = {id: 'I', quantity: 1};
 
                     scope.decreaseQuantity(item);
@@ -1008,7 +1008,7 @@ describe('basket', function () {
             });
 
             it('add sale to basket', function () {
-                expect(fixture.basket.add.calls[0].args[0].item).toEqual({
+                expect(fixture.basket.add.calls.argsFor(0)[0].item).toEqual({
                     id: fixture.sale.id,
                     price: fixture.sale.price,
                     quantity: 1
@@ -1017,7 +1017,7 @@ describe('basket', function () {
 
             describe('with success', function () {
                 beforeEach(function () {
-                    fixture.basket.add.calls[0].args[0].success();
+                    fixture.basket.add.calls.argsFor(0)[0].success();
                 });
 
                 it('controller is not working', function () {
@@ -1025,13 +1025,13 @@ describe('basket', function () {
                 });
 
                 it('presenter presents success', function () {
-                    expect(fixture.addToBasketPresenter.success.calls[0].args[0]).toEqual({$scope: scope});
+                    expect(fixture.addToBasketPresenter.success.calls.argsFor(0)[0]).toEqual({$scope: scope});
                 })
             });
 
             describe('with error', function () {
                 beforeEach(function () {
-                    fixture.basket.add.calls[0].args[0].error({
+                    fixture.basket.add.calls.argsFor(0)[0].error({
                         quantity: [{
                             label: 'upperbound',
                             params: {boundary: 2}
@@ -1060,7 +1060,7 @@ describe('basket', function () {
                 });
 
                 it('test', function () {
-                    expect(fixture.addToBasketPresenter.error.calls[0].args[0]).toEqual({
+                    expect(fixture.addToBasketPresenter.error.calls.argsFor(0)[0]).toEqual({
                         $scope: scope,
                         violations: {quantity: [{label: 'upperbound', params: {boundary: 2}}]},
                         id: 'sale-id'
@@ -1080,7 +1080,7 @@ describe('basket', function () {
             });
 
             it('add sale to basket', function () {
-                expect(fixture.basket.add.calls[0].args[0].item).toEqual({
+                expect(fixture.basket.add.calls.argsFor(0)[0].item).toEqual({
                     id: fixture.sale.id,
                     price: fixture.sale.price,
                     quantity: 5
@@ -1124,7 +1124,7 @@ describe('basket', function () {
                 }));
 
                 it('then perform rest call', inject(function (config, basket, restServiceHandler) {
-                    expect(restServiceHandler.calls[0].args[0]).toEqual(ctx);
+                    expect(restServiceHandler.calls.argsFor(0)[0]).toEqual(ctx);
                     expect(ctx.$scope).toEqual(scope);
                     expect(ctx.params.method).toEqual('PUT');
                     expect(ctx.params.url).toEqual(config.baseUri + 'api/entity/purchase-order');
@@ -1152,25 +1152,32 @@ describe('basket', function () {
     describe('PlacePurchaseOrderController', function () {
         var capturedRequest = {};
 
-        beforeEach(inject(function ($controller) {
+        beforeEach(inject(function ($controller, applicationDataService) {
             scope.termsAndConditions = 'terms-and-conditions';
             ctx = {};
-            ctrl = $controller(PlacePurchaseOrderController, {
+            ctrl = $controller('PlacePurchaseOrderController', {
                 $scope: scope,
                 placePurchaseOrderService: function (request) {
                     capturedRequest = request;
                 }
-            })
+            });
+            applicationDataService.resolve({
+                availablePaymentMethods:['wire-transfer', 'paypal-classic']
+            });
         }));
+
+        it('exposes available payment providers', function() {
+            expect(ctrl.availablePaymentMethods).toEqual(['wire-transfer', 'paypal-classic']);
+        });
 
         it('set shipping address', function () {
             ctrl.setShippingAddress({label: 'L', addressee: 'A'});
-            expect(addressSelection.add.calls[0].args[0]).toEqual('shipping', {label: 'L', addressee: 'A'});
+            expect(addressSelection.add.calls.argsFor(0)[0]).toEqual('shipping', {label: 'L', addressee: 'A'});
         });
 
         it('set billing address', function () {
             ctrl.setBillingAddress({label: 'L', addressee: 'A'});
-            expect(addressSelection.add.calls[0].args[0]).toEqual('billing', {label: 'L', addressee: 'A'});
+            expect(addressSelection.add.calls.argsFor(0)[0]).toEqual('billing', {label: 'L', addressee: 'A'});
         });
 
         describe('given a basket with some items', function () {
@@ -1186,7 +1193,7 @@ describe('basket', function () {
 
                 describe('and billing and shipping addresses', function () {
                     beforeEach(function () {
-                        addressSelection.view.andCallFake(function (type) {
+                        addressSelection.view.and.callFake(function (type) {
                             return {
                                 label: type + '-label',
                                 addressee: type + '-addressee'
@@ -1307,7 +1314,7 @@ describe('basket', function () {
                             }));
 
                             it('clears address selection', function () {
-                                expect(addressSelection.clear.calls[0]).toBeDefined();
+                                expect(addressSelection.clear.calls.count() > 0).toEqual(true);
                             });
                         });
                     });
@@ -1315,13 +1322,15 @@ describe('basket', function () {
 
                 describe('and no shipping and billing address', function () {
                     beforeEach(function () {
-                        addressSelection.view.andReturn({label: null, addressee: null});
+                        addressSelection.view.and.callFake(function() {return {label: null, addressee: null}});
                         scope.submit();
                     });
 
                     it('address data is empty string', function () {
                         expect(capturedRequest.request).toEqual({
                             termsAndConditions: scope.termsAndConditions,
+                            provider: undefined,
+                            comment: undefined,
                             items: [
                                 {id: 'sale-1', quantity: 2},
                                 {id: 'sale-2', quantity: 1, configuration: {x: 'y'}}

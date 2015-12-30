@@ -1,11 +1,11 @@
-angular.module('basket', ['ngRoute', 'ui.bootstrap.modal'])
+angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'application'])
     .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', 'validateOrder', LocalStorageBasketFactory])
     .factory('addToBasketPresenter', [AddToBasketPresenterFactory])
     .factory('updateBasketPresenter', [UpdateBasketPresenterFactory])
     .factory('placePurchaseOrderService', ['usecaseAdapterFactory', 'addressSelection', 'config', '$routeParams', 'restServiceHandler', PlacePurchaseOrderServiceFactory])
     .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', '$timeout', '$routeParams', ViewBasketController])
-    .controller('PlacePurchaseOrderController', ['$scope', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', PlacePurchaseOrderController])
+    .controller('PlacePurchaseOrderController', ['$scope', 'applicationDataService', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
     .directive('basketLink', function () {
@@ -444,7 +444,7 @@ function PlacePurchaseOrderServiceFactory(usecaseAdapterFactory, addressSelectio
     }
 }
 
-function PlacePurchaseOrderController($scope, basket, $location, addressSelection, localStorage, placePurchaseOrderService) {
+function PlacePurchaseOrderController($scope, common, basket, $location, addressSelection, localStorage, placePurchaseOrderService) {
     var self = this;
 
     this.form = {};
@@ -498,7 +498,11 @@ function PlacePurchaseOrderController($scope, basket, $location, addressSelectio
                 addressSelection.clear();
             }
         });
-    }
+    };
+
+    common.then(function(config) {
+        self.availablePaymentMethods = config.availablePaymentMethods;
+    });
 }
 
 function AddToBasketModal($scope, $modal) {
