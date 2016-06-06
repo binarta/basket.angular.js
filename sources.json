@@ -1,0 +1,5 @@
+{
+  "shop": {
+    "basket": "bower_components/binarta.basket.angular/src/basket.js"
+  }
+}
