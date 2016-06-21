@@ -17,7 +17,7 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'application'])
             },
             template: '<a ng-href="#!{{localePrefix}}/basket" ng-if="quantity > 0">' +
             '<i class="fa fa-shopping-cart fa-fw"></i>' +
-            '({{quantity}}) <span ng-if="basketLink == \'showSubTotal\'">{{(subTotal || 0) / 100 | currency}}</span>' +
+            '({{quantity}}) <span ng-if="basketLink == \'showSubTotal\'">{{presentablePrice}}</span>' +
             '</a>'
         };
     })
@@ -361,8 +361,8 @@ function ViewBasketController($scope, basket, $location, validateOrder, updateBa
                     }, 0);
                     $scope.couponCode = it.couponCode;
                     $scope.additionalCharges = it.additionalCharges;
-                    $scope.itemTotal = it.itemTotal;
-                    $scope.subTotal = it.price;
+                    $scope.presentableItemTotal = it.presentableItemTotal;
+                    $scope.presentablePrice = it.presentablePrice;
                 });
             }
         });

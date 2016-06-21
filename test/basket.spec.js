@@ -542,8 +542,8 @@ describe('basket', function () {
                         couponCode: 'coupon-code',
                         items: items,
                         additionalCharges: 'additional-charges',
-                        itemTotal: 'item-total',
-                        price: 'sub-total'
+                        presentableItemTotal: 'item-total',
+                        presentablePrice: 'price'
                     })
                 },
                 items: function () {
@@ -579,8 +579,8 @@ describe('basket', function () {
                     expect(scope.quantity).toEqual(7);
                     expect(scope.couponCode).toEqual('coupon-code');
                     expect(scope.additionalCharges).toEqual('additional-charges');
-                    expect(scope.itemTotal).toEqual('item-total');
-                    expect(scope.subTotal).toEqual('sub-total');
+                    expect(scope.presentableItemTotal).toEqual('item-total');
+                    expect(scope.presentablePrice).toEqual('price');
                 });
             });
         });
