@@ -8,19 +8,17 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'application'])
     .controller('PlacePurchaseOrderController', ['$scope', 'applicationDataService', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
-    .directive('basketLink', function () {
+    .directive('basketLink', ['$log', function ($log) {
+        $log.warn('@deprecated basket-link attribute: use the bin-basket element instead!');
         return {
             restrict: 'A',
             controller: 'ViewBasketController',
             scope: {
                 basketLink: '@'
             },
-            template: '<a ng-href="#!{{localePrefix}}/basket" ng-if="quantity > 0">' +
-            '<i class="fa fa-shopping-cart fa-fw"></i>' +
-            '({{quantity}}) <span ng-if="basketLink == \'showSubTotal\'">{{presentablePrice}}</span>' +
-            '</a>'
+            template: '<bin-basket mode="link"></bin-basket>'
         };
-    })
+    }])
     .config(['$routeProvider', function ($routeProvider) {
         $routeProvider
             .when('/:locale/checkout', {templateUrl: 'partials/shop/checkout.html'})
