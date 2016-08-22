@@ -5,8 +5,9 @@
     "./sources.json"
   ],
   "dependencies": {
+    "binartajs-angular1": "git@github.com:binarta/binartajs-angular1#cfi",
     "binarta.angularx": "0.*.*",
-    "binarta.application.angular":"0.*.*"
+    "binarta.application.angular": "0.*.*"
   },
   "devDependencies": {
     "angular-mocks": "1.*.*",
@@ -21,5 +22,8 @@
     "bower_components",
     "test",
     "tests"
-  ]
+  ],
+  "resolutions": {
+    "angular": "1.5.*"
+  }
 }

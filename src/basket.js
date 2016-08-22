@@ -1,11 +1,11 @@
-angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'application'])
-    .factory('basket', ['config', 'localStorage', 'topicMessageDispatcher', 'restServiceHandler', 'validateOrder', LocalStorageBasketFactory])
+angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'application', 'binarta-shopjs-angular1'])
+    .factory('basket', ['binarta', 'topicMessageDispatcher', '$log', LocalStorageBasketFactory])
     .factory('addToBasketPresenter', [AddToBasketPresenterFactory])
     .factory('updateBasketPresenter', [UpdateBasketPresenterFactory])
-    .factory('placePurchaseOrderService', ['usecaseAdapterFactory', 'addressSelection', 'config', '$routeParams', 'restServiceHandler', PlacePurchaseOrderServiceFactory])
-    .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', AddToBasketController])
-    .controller('ViewBasketController', ['$scope', 'basket', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', '$timeout', '$routeParams', ViewBasketController])
-    .controller('PlacePurchaseOrderController', ['$scope', 'applicationDataService', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', PlacePurchaseOrderController])
+    .factory('placePurchaseOrderService', ['usecaseAdapterFactory', 'addressSelection', 'binarta', '$log', PlacePurchaseOrderServiceFactory])
+    .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', '$log', AddToBasketController])
+    .controller('ViewBasketController', ['$scope', 'basket', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', '$timeout', '$routeParams', '$log', ViewBasketController])
+    .controller('PlacePurchaseOrderController', ['$scope', 'applicationDataService', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', '$log', PlacePurchaseOrderController])
     .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
     .directive('basketLink', ['$log', function ($log) {
@@ -45,202 +45,39 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'application'])
             });
     }]);
 
-function LocalStorageBasketFactory(config, localStorage, topicMessageDispatcher, restServiceHandler, validateOrder) {
-    var basket;
-
-    function isUninitialized() {
-        return !localStorage.basket;
-    }
-
-    function initialize() {
-        basket = {
-            items: []
-        };
-        flush();
-    }
-
-    function flush() {
-        localStorage.basket = JSON.stringify(basket);
-    }
-
-    function rehydrate() {
-        basket = JSON.parse(localStorage.basket);
-    }
-
-    function contains(it) {
-        return basket.items.reduce(function (p, c) {
-            return p || c.id == it.id;
-        }, false)
-    }
-
-    function findItemById(id) {
-        return basket.items.reduce(function (p, c) {
-            return p || (c.id == id ? c : null)
-        }, null)
-    }
-
-    function increment(it) {
-        findItemById(it.id).quantity += it.quantity;
-    }
-
-    function decrement(it) {
-        findItemById(it.id).quantity -= it.quantity;
-    }
-
-    function append(it) {
-        var item = {id: it.id, price: it.price, quantity: it.quantity};
-        if(it.configuration) item.configuration = it.configuration;
-        basket.items.push(item);
-    }
-
-    function raiseRefreshNotification() {
-        topicMessageDispatcher.fire('basket.refresh', 'ok');
-    }
-
-    function isQuantified(it) {
-        return it.quantity > 0;
-    }
-
-    function removeItem(toRemove) {
-        var idx = basket.items.reduce(function (p, c, i) {
-            return c.id == toRemove.id ? i : p;
-        }, -1);
-        basket.items.splice(idx, 1);
-    }
-
-    return new function () {
-        var self = this;
-
-        if (isUninitialized()) initialize();
-        rehydrate();
-        function onError(scope, it, cb, success) {
-            if (violationOnScopeFor(scope, it.item.id)) {
-                cb();
-                if (it.error) it.error(violationOnScopeFor(scope, it.item.id));
-            } else success();
+function LocalStorageBasketFactory(binarta, topicMessageDispatcher, $log) {
+    $log.warn('@deprecated LocalStorageBasketFactory - use binarta.shop.basket instead!');
+    var delegate = binarta.shop.basket;
+    delegate.eventRegistry.add({
+        itemAdded: function () {
+            topicMessageDispatcher.fire('basket.refresh', 'ok');
+            topicMessageDispatcher.fire('basket.item.added', 'ok');
+        },
+        itemUpdated: function () {
+            topicMessageDispatcher.fire('basket.refresh', 'ok');
+        },
+        itemRemoved: function () {
+            topicMessageDispatcher.fire('basket.refresh', 'ok');
+        },
+        cleared: function () {
+            topicMessageDispatcher.fire('basket.refresh', 'ok');
         }
-
-        function violationOnScopeFor(scope, id) {
-            return scope.violations.items[id];
-        }
-
-        function validate(scope, success, error) {
-            validateOrder(scope, {
-                data: {items: basket.items},
-                success: success,
-                error: error
-            })
-        }
-
-        function onSuccess(it, topic) {
-            flush();
-            raiseRefreshNotification();
-            if (topic) topicMessageDispatcher.fire(topic, 'ok');
-            if (it.success) it.success();
-        }
-
-        this.refresh = function () {
-            rehydrate();
-        };
-        this.add = function (it) {
-            var scope = {};
-            var success = function () {
-                onSuccess(it, 'basket.item.added');
-            };
-
-            var error = function () {
-                onError(scope, it, revertAdd, success);
-            };
-
-            if (isQuantified(it.item)) {
-                contains(it.item) ? increment(it.item) : append(it.item);
-                validate(scope, success, error);
-            }
-
-            function revertAdd() {
-                var item = findItemById(it.item.id);
-                if (item && item.quantity - it.item.quantity > 0) decrement(it.item);
-                else removeItem(it.item);
-            }
-        };
-        this.update = function (it) {
-            var scope = {};
-            var success = function () {
-                onSuccess(it);
-            };
-            var error = function () {
-                onError(scope, it, rehydrate, success);
-            };
-            if (isQuantified(it.item)) {
-                findItemById(it.item.id).quantity = it.item.quantity + 0;
-                validate(scope, success, error);
-            }
-        };
-        this.remove = function (toRemove) {
-            removeItem(toRemove);
-            flush();
-            raiseRefreshNotification();
-        };
-        this.items = function () {
-            return basket.items;
-        };
-        this.subTotal = function () {
-            var calculate = function () {
-                return basket.items.reduce(function (sum, it) {
-                    return sum + (it.price * it.quantity)
-                }, 0);
-            };
-            return basket.items ? calculate() : 0;
-        };
-        this.render = function (presenter) {
-            var couponCode = this.couponCode();
-            restServiceHandler({
-                params: {
-                    method: 'POST',
-                    url: (config.baseUri || '') + 'api/echo/purchase-order',
-                    withCredentials: true,
-                    data: {
-                        namespace: config.namespace,
-                        items: this.items().map(function (it) {
-                            var item = {id: it.id, quantity: it.quantity};
-                            if(it.configuration) item.configuration = it.configuration;
-                            if(couponCode) {
-                                item.couponCode = couponCode;
-                                couponCode = undefined;
-                            }
-                            return item
-                        })
-                    }
-                },
-                success: function (payload) {
-                    basket.items = payload.items;
-                    flush();
-                    payload.couponCode = self.couponCode();
-                    presenter(payload);
-                    topicMessageDispatcher.fire('basket.rendered', 'ok');
-                }
-            });
-            presenter({
-                couponCode: this.couponCode(),
-                items: this.items(),
-                subTotal: this.subTotal()
-            });
-        };
-        this.clear = function () {
-            initialize();
-            raiseRefreshNotification();
-        };
-        this.couponCode = function (code) {
-            if (code) {
-                basket.coupon = code;
-                flush();
-            }
-            return basket.coupon;
-        }
+    });
+    delegate.render = function (presenter) {
+        $log.warn('@deprecated basket.render() - render callbacks are no longer necessary, use binarta.shop.basket instead!');
+        presenter({
+            couponCode: this.couponCode(),
+            items: this.items(),
+            subTotal: this.subTotal()
+        });
+        topicMessageDispatcher.fire('basket.rendered', 'ok');
     };
+    return delegate;
 }
 
-function ViewBasketController($scope, basket, $location, validateOrder, updateBasketPresenter, ngRegisterTopicHandler, $timeout, $routeParams) {
+function ViewBasketController($scope, basket, $location, validateOrder, updateBasketPresenter, ngRegisterTopicHandler, $timeout, $routeParams, $log) {
+    $log.warn('@deprecated ViewBasketController - use bin-basket element to render the basket!');
+
     var config = {};
 
     $scope.init = function (args) {
@@ -291,12 +128,13 @@ function ViewBasketController($scope, basket, $location, validateOrder, updateBa
     };
 
     var updatePricesTimeout;
+
     function updatePrices(it) {
         $scope.updatingPrices = true;
         if (updatePricesTimeout) $timeout.cancel(updatePricesTimeout);
         updatePricesTimeout = $timeout(function () {
             $scope.update(it);
-        },300);
+        }, 300);
     }
 
     $scope.remove = function (it) {
@@ -349,8 +187,8 @@ function ViewBasketController($scope, basket, $location, validateOrder, updateBa
 
     ['app.start', 'basket.refresh'].forEach(function (it) {
         ngRegisterTopicHandler({
-            scope:$scope,
-            topic:it,
+            scope: $scope,
+            topic: it,
             handler: function () {
                 basket.render(function (it) {
                     $scope.items = it.items;
@@ -371,7 +209,9 @@ function UpdateBasketPresenterFactory() {
     return {}
 }
 
-function AddToBasketController($scope, basket, addToBasketPresenter) {
+function AddToBasketController($scope, basket, addToBasketPresenter, $log) {
+    $log.warn('@deprecated AddToBasketController - use bin-basket element to add items to the basket!');
+
     $scope.quantity = 1;
     $scope.working = false;
 
@@ -413,7 +253,8 @@ function AddToBasketPresenterFactory() {
     return {}
 }
 
-function PlacePurchaseOrderServiceFactory(usecaseAdapterFactory, addressSelection, config, $routeParams, restServiceHandler) {
+function PlacePurchaseOrderServiceFactory(usecaseAdapterFactory, addressSelection, binarta, $log) {
+    $log.warn('@deprecated PlacePurchaseOrderServiceFactory - use binarta.shop.checkout instead!');
     return function (args) {
         var $scope = args.$scope;
 
@@ -428,34 +269,26 @@ function PlacePurchaseOrderServiceFactory(usecaseAdapterFactory, addressSelectio
         });
         data.reportType = 'complex';
 
-        ctx.params = {
-            method: 'PUT',
-            url: config.baseUri + 'api/entity/purchase-order',
-            withCredentials: true,
-            headers: {
-                'Accept-Language': $routeParams.locale
-            },
-            data: data
-        };
         ctx.success = args.success;
-        restServiceHandler(ctx);
+        binarta.shop.gateway.submitOrder(data, ctx);
     }
 }
 
-function PlacePurchaseOrderController($scope, common, basket, $location, addressSelection, localStorage, placePurchaseOrderService) {
+function PlacePurchaseOrderController($scope, common, basket, $location, addressSelection, localStorage, placePurchaseOrderService, $log) {
+    $log.warn('@deprecated PlacePurchaseOrderController - use binarta.shop.checkout instead!');
     var self = this;
 
     this.form = {};
 
-    this.setShippingAddress = function(it) {
-        addressSelection.add('shipping', {label:it.label, addressee:it.addressee});
+    this.setShippingAddress = function (it) {
+        addressSelection.add('shipping', {label: it.label, addressee: it.addressee});
     };
 
-    this.setBillingAddress = function(it) {
-        addressSelection.add('billing', {label:it.label, addressee:it.addressee});
+    this.setBillingAddress = function (it) {
+        addressSelection.add('billing', {label: it.label, addressee: it.addressee});
     };
 
-    this.setPaymentProvider = function(it) {
+    this.setPaymentProvider = function (it) {
         this.form.paymentProvider = it;
     };
 
@@ -471,8 +304,8 @@ function PlacePurchaseOrderController($scope, common, basket, $location, address
                 comment: $scope.comment,
                 items: basket.items().map(function (it) {
                     var item = {id: it.id, quantity: it.quantity};
-                    if(it.configuration) item.configuration = it.configuration;
-                    if(couponCode) {
+                    if (it.configuration) item.configuration = it.configuration;
+                    if (couponCode) {
                         item.couponCode = couponCode;
                         couponCode = undefined;
                     }
@@ -498,7 +331,7 @@ function PlacePurchaseOrderController($scope, common, basket, $location, address
         });
     };
 
-    common.then(function(config) {
+    common.then(function (config) {
         self.availablePaymentMethods = config.availablePaymentMethods;
     });
 }
