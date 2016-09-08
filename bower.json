@@ -7,7 +7,7 @@
   "dependencies": {
     "binartajs-angular1": "1.*.*",
     "binarta.angularx": "0.*.*",
-    "binarta.application.angular": "0.*.*"
+    "binarta.application.angular": "1.*.*"
   },
   "devDependencies": {
     "angular-mocks": "1.*.*",
