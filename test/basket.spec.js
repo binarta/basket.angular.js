@@ -1137,32 +1137,6 @@ describe('basket', function () {
         });
     });
 
-    describe('AddToBasketModal', function () {
-        var item = 'item';
-
-        beforeEach(inject(function ($controller) {
-            ctrl = $controller(AddToBasketModal, {$scope: scope});
-        }));
-
-        describe('on submit', function () {
-            beforeEach(function () {
-                scope.submit(item);
-            });
-
-            it('expose item on scope', function () {
-                expect(scope.item).toEqual(item);
-            });
-
-            it('show modal', inject(function (modal) {
-                expect(modal.settings).toEqual({
-                    templateUrl: 'partials/basket/add.html',
-                    backdrop: 'static',
-                    scope: scope
-                });
-            }));
-        });
-    });
-
     describe('RedirectToApprovalUrlController', function () {
         var _window = {};
         beforeEach(inject(function ($controller) {

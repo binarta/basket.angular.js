@@ -1,4 +1,4 @@
-angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'application', 'binarta-shopjs-angular1'])
+angular.module('basket', ['ngRoute', 'application', 'binarta-shopjs-angular1'])
     .factory('basket', ['binarta', 'topicMessageDispatcher', '$log', LocalStorageBasketFactory])
     .factory('addToBasketPresenter', [AddToBasketPresenterFactory])
     .factory('updateBasketPresenter', [UpdateBasketPresenterFactory])
@@ -6,7 +6,6 @@ angular.module('basket', ['ngRoute', 'ui.bootstrap.modal', 'application', 'binar
     .controller('AddToBasketController', ['$scope', 'basket', 'addToBasketPresenter', '$log', AddToBasketController])
     .controller('ViewBasketController', ['$scope', 'basket', '$location', 'validateOrder', 'updateBasketPresenter', 'ngRegisterTopicHandler', '$timeout', '$routeParams', '$log', ViewBasketController])
     .controller('PlacePurchaseOrderController', ['$scope', 'applicationDataService', 'basket', '$location', 'addressSelection', 'localStorage', 'placePurchaseOrderService', '$log', PlacePurchaseOrderController])
-    .controller('AddToBasketModal', ['$scope', '$modal', AddToBasketModal])
     .controller('RedirectToApprovalUrlController', ['$scope', '$window', '$location', RedirectToApprovalUrlController])
     .directive('basketLink', ['$log', function ($log) {
         $log.warn('@deprecated basket-link attribute: use the bin-basket element instead!');
@@ -334,17 +333,6 @@ function PlacePurchaseOrderController($scope, common, basket, $location, address
     common.then(function (config) {
         self.availablePaymentMethods = config.availablePaymentMethods;
     });
-}
-
-function AddToBasketModal($scope, $modal) {
-    $scope.submit = function (it) {
-        $scope.item = it;
-        $modal.open({
-            templateUrl: 'partials/basket/add.html',
-            backdrop: 'static',
-            scope: $scope
-        });
-    }
 }
 
 function RedirectToApprovalUrlController($scope, $window, $location) {
