@@ -5,6 +5,9 @@
     angular.module('binarta-shopjs-gateways-angular1', ['binarta-shopjs-inmem-angular1'])
         .provider('binartaShopGateway', ['inmemBinartaShopGatewayProvider', proxy]);
 
+    angular.module('binarta-applicationjs-gateways-angular1', ['binarta-applicationjs-inmem-angular1'])
+        .provider('binartaApplicationGateway', ['inmemBinartaApplicationGatewayProvider', proxy]);
+
     angular.module('binartajs-angular1-spec', [
         'binarta-checkpointjs-angular1', 'binarta-checkpointjs-gateways-angular1',
         'binarta-shopjs-angular1', 'binarta-shopjs-gateways-angular1'
